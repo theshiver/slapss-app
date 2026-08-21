@@ -87,9 +87,14 @@ struct MeetingEvent: Identifiable, Hashable {
     /// property through every source and call site for one feature.
     /// Returns nil for anything that doesn't have a native Calendar.app
     /// entry to open (reminders, Microsoft Graph events).
+    /// The id also carries an `"#<occurrence-timestamp>"` suffix so recurring
+    /// occurrences stay distinct (see `EventKitSource.toMeetingEvent`). Calendar.app's
+    /// URL scheme wants the bare event identifier, so strip it back off here.
     var eventKitIdentifier: String? {
         guard source == .eventKit, !isReminder, id.hasPrefix("ek:") else { return nil }
-        return String(id.dropFirst("ek:".count))
+        let body = String(id.dropFirst("ek:".count))
+        guard let separator = body.lastIndex(of: "#") else { return body }
+        return String(body[body.startIndex..<separator])
     }
 
     /// First detected meeting URL (Zoom / Teams / Meet / Webex). Computed lazily

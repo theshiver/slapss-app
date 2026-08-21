@@ -11,8 +11,9 @@ Slapss is now open source.
 
 - The full source code is published at <https://github.com/theshiver/slapss-app> under the Apache 2.0 licence. Slapss has always claimed that it reads your calendar locally and sends it nowhere. That was a promise you had to take on faith. Now you can read the code and check.
 - Settings → About has a new **Source Code** link.
+- Fixed: a repeating meeting would stop showing its full-screen alert after you dismissed it once. Every occurrence of a repeating event was being treated as the same event, so dismissing Monday's alert also dismissed every following week's — while the menu bar countdown kept working normally, which made it look like only the first meeting of the day was affected. Snoozing and hiding from the menu bar were leaking across occurrences the same way, and are fixed too.
 
-Nothing else changed. Same app, same features, still free, still no accounts and no tracking. The Mac App Store remains the only official build.
+Same app, same features, still free, still no accounts and no tracking. The Mac App Store remains the only official build.
 
 ## v1.8.2 — July 30, 2026
 

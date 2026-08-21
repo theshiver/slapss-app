@@ -248,8 +248,23 @@ final class EventKitSource {
             return raw.isEmpty ? nil : raw
         }
 
+        // EventKit hands every occurrence of a recurring event the SAME
+        // `eventIdentifier` — today's stand-up and tomorrow's are
+        // indistinguishable by identifier alone. Everything keyed by
+        // `MeetingEvent.id` (dismissedIDs, snoozeUntil, menuBarMutedIDs, the
+        // scheduler's effective-start cache) would then treat the whole series
+        // as one item, so dismissing a single occurrence silently suppressed
+        // the overlay for every future one while the menu-bar countdown — which
+        // reads the aggregator directly and knows nothing about dismissal —
+        // kept looking perfectly healthy.
+        //
+        // Qualify the id with the occurrence's start time. A detached instance
+        // moved to a new time correctly becomes a new id, which is what we
+        // want: it's a different slot and deserves its own alert.
+        let occurrenceStamp = Int(ek.startDate.timeIntervalSince1970.rounded())
+
         return MeetingEvent(
-            id: "ek:\(ek.eventIdentifier ?? UUID().uuidString)",
+            id: "ek:\(ek.eventIdentifier ?? UUID().uuidString)#\(occurrenceStamp)",
             title: ek.title ?? "(Untitled)",
             startDate: ek.startDate,
             endDate: ek.endDate,
