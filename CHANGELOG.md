@@ -5,6 +5,15 @@ All notable user-facing changes to Slapss.
 This file is the source of truth for release notes. The public web changelog and
 GitHub Releases are generated from it.
 
+## v2.0.0 — August 21, 2026
+
+Slapss is now open source.
+
+- The full source code is published at <https://github.com/theshiver/slapss-app> under the Apache 2.0 licence. Slapss has always claimed that it reads your calendar locally and sends it nowhere. That was a promise you had to take on faith. Now you can read the code and check.
+- Settings → About has a new **Source Code** link.
+
+Nothing else changed. Same app, same features, still free, still no accounts and no tracking. The Mac App Store remains the only official build.
+
 ## v1.8.2 — July 30, 2026
 
 - Fixed: Snooze could appear to do nothing on the full-screen alert in macOS 27 beta. The snooze choices now open reliably inside the alert.

@@ -244,6 +244,18 @@ struct SettingsView: View {
                     .buttonStyle(.link)
                 }
 
+                // Slapss claims your calendar never leaves the Mac. About is
+                // where someone checks that kind of claim, so the source link
+                // belongs here rather than buried in onboarding.
+                LabeledContent(lm["settings.about.sourceCode"]) {
+                    Button("github.com/theshiver/slapss-app") {
+                        if let url = URL(string: "https://github.com/theshiver/slapss-app") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .buttonStyle(.link)
+                }
+
                 Button(lm["settings.about.tourAgain"]) {
                     settings.onboardingCompleted = false
                     // Capture Settings window BEFORE openWindow() — that call
