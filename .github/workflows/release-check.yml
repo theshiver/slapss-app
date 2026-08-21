@@ -1,0 +1,58 @@
+name: Release check
+
+# Runs when a vX.Y.Z tag is pushed. Catches the three things that are easy to
+# forget between "it builds" and "it's released": the tag disagreeing with the
+# Xcode project version, Debug and Release configurations drifting apart, and a
+# missing changelog entry.
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  verify:
+    name: Verify tag matches project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check version consistency
+        run: |
+          set -euo pipefail
+          PBX=slapss.xcodeproj/project.pbxproj
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "Tag version: $TAG"
+
+          # Every MARKETING_VERSION line must agree (Debug + Release).
+          mapfile -t MV < <(grep -oE 'MARKETING_VERSION = [^;]+;' "$PBX" \
+                            | sed -E 's/MARKETING_VERSION = (.*);/\1/' | sort -u)
+          if [ "${#MV[@]}" -ne 1 ]; then
+            echo "::error::MARKETING_VERSION differs between configurations: ${MV[*]}"
+            exit 1
+          fi
+          echo "MARKETING_VERSION: ${MV[0]}"
+
+          if [ "${MV[0]}" != "$TAG" ]; then
+            echo "::error::Tag v$TAG does not match MARKETING_VERSION ${MV[0]}"
+            exit 1
+          fi
+
+          # Build numbers must also agree across configurations.
+          mapfile -t CPV < <(grep -oE 'CURRENT_PROJECT_VERSION = [^;]+;' "$PBX" \
+                             | sed -E 's/CURRENT_PROJECT_VERSION = (.*);/\1/' | sort -u)
+          if [ "${#CPV[@]}" -ne 1 ]; then
+            echo "::error::CURRENT_PROJECT_VERSION differs between configurations: ${CPV[*]}"
+            exit 1
+          fi
+          echo "CURRENT_PROJECT_VERSION: ${CPV[0]}"
+
+      - name: Check CHANGELOG entry exists
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          if ! grep -qE "^## v${TAG}( |$|—)" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## v${TAG}' entry"
+            exit 1
+          fi
+          echo "Changelog entry found:"
+          grep -A6 -E "^## v${TAG}( |$|—)" CHANGELOG.md

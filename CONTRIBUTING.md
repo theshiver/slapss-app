@@ -78,6 +78,11 @@ CLA to sign.
 Note that the Slapss name and icon assets are **not** covered by that license.
 See [`TRADEMARK.md`](TRADEMARK.md) before publishing a fork.
 
+## Releases
+
+Releases are cut by the maintainer; see [`RELEASING.md`](RELEASING.md) if you're
+curious about the process.
+
 ## Security issues
 
 Do not open an issue. See [`SECURITY.md`](SECURITY.md).

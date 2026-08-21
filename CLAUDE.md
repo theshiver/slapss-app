@@ -13,6 +13,7 @@ Two repos:
 ## Rules
 
 - **Never bump version numbers without asking Can first.** He decides the version.
+- **Release process is in `RELEASING.md`.** Follow it in order; the ordering is what keeps the App Store, the tag, the GitHub Release, and the marketing site in step.
 - **After every user-visible change, update `CHANGELOG.md` first**, then mirror it into `slapss-web/changelog.html` (separate private repo). Record the engineering detail in the Changelog log at the bottom of this file. No exceptions.
 - Never touch `slapss-web` unless the change requires updating privacy/terms or the changelog.
 
