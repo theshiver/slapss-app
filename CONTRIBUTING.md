@@ -44,7 +44,9 @@ It's the cheapest way to avoid work that won't be merged.
    silently regress if reverted — `MenuBarExtra` never firing `onDisappear`,
    `Color.clear` flipping AppKit's coordinate system, App Nap throttling
    `Timer.scheduledTimer`, and others.
-2. **Make sure it builds:**
+2. **Make sure it builds.** You need **Xcode 26 or later** — see the note in
+   [`README.md`](README.md#building-from-source). Older Xcode fails with
+   actor-isolation errors that are a toolchain problem, not a code problem.
    ```
    xcodebuild build -project slapss.xcodeproj -scheme slapss -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
    ```

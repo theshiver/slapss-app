@@ -48,6 +48,29 @@ Two repos:
 
 ## Non-obvious patterns and gotchas
 
+### The project requires Xcode 26+ — older Xcode fails with actor-isolation errors
+
+`project.pbxproj` sets `SWIFT_APPROACHABLE_CONCURRENCY = YES` and
+`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (Swift 6.2 / Xcode 26 settings), with
+`SWIFT_VERSION = 5.0`. Every declaration is therefore implicitly `@MainActor`,
+which is why so little of this codebase carries explicit `@MainActor` annotations
+despite being almost entirely UI code.
+
+Xcode versions older than 26 do not recognise those build settings. They don't
+error on the unknown setting — they **silently ignore** it, compile everything as
+nonisolated, and then emit a wall of *"call to main actor-isolated instance
+method ... in a synchronous nonisolated context"* errors in `MeetingEvent.swift`,
+`StatusMenuController.swift`, and `AlertView.swift`. The code is not broken; the
+toolchain is too old. This is what broke the first public CI run on a `macos-15`
+runner (Xcode 16).
+
+Consequences:
+- CI must run on `macos-26` or newer. See `.github/workflows/build.yml`.
+- Don't "fix" those errors by sprinkling `@MainActor` or `nonisolated` around.
+  Check the Xcode version first.
+- If the implicit-MainActor default is ever turned off, the annotations it was
+  standing in for have to be added back by hand across the whole codebase.
+
 ### MenuBarExtra(.window) keeps the view graph alive permanently
 `onAppear` fires once on first popover open. `onDisappear` **never fires** on popover close — the window hides, it is not destroyed. Consequences:
 - Never use `onAppear/onDisappear` to gate `.repeatForever()` animations. They will run at 60 fps indefinitely with nothing on screen.

@@ -13,12 +13,21 @@ concurrency:
 jobs:
   build:
     name: Build (unsigned)
-    runs-on: macos-15
+    # Xcode 26 or newer is required: the project sets
+    # SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor, which older Xcode versions
+    # silently ignore, producing a wall of actor-isolation errors.
+    runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Select newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          newest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Using $newest"
+          sudo xcode-select -s "$newest/Contents/Developer"
+          xcodebuild -version
+          swift --version
 
       # Signing is disabled so the build works without the upstream Apple
       # developer team. This only proves it compiles — it does not produce a

@@ -68,7 +68,14 @@ anything.** Those workarounds look like mistakes until you know why they're ther
 
 ## Building from source
 
-Requirements: macOS 14.6 or later, Xcode 16 or later.
+Requirements: macOS 14.6 or later to **run**, **Xcode 26 or later** to build.
+
+> **Xcode 26 is a hard requirement, not a suggestion.** The project sets
+> `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, which makes every declaration
+> implicitly `@MainActor`. Older Xcode versions don't know that build setting,
+> silently ignore it, and then fail with a wall of *"call to main actor-isolated
+> instance method in a synchronous nonisolated context"* errors. If you see
+> those, your Xcode is too old — the code is fine.
 
 ```
 git clone https://github.com/theshiver/slapss-app.git
