@@ -40,7 +40,7 @@ Two repos:
 - `AlertScheduler.swift` — all scheduling logic, App Nap, watchdog, missed-fire recovery
 - `CalendarAggregator.swift` — merge + poll loop
 - `EventKitSource.swift` — EventKit fetch (Calendar + Reminders)
-- `GraphCalendarSource.swift` — Microsoft Graph fetch (Exchange)
+- `GraphSource.swift` — Microsoft Graph fetch (Exchange)
 - `AppSettings.swift` — all `@Published` preferences + UserDefaults persistence
 - `PopoverVisibilityMonitor.swift` — NSWindow notification observer
 - `Theme.swift` — `AppTheme` (sunset/ocean/forest) + `AppTheme.Accents` color sets + `ThemeSwatchPicker` (shared by Settings and Onboarding)

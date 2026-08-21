@@ -6,11 +6,13 @@ step, and the order below is what keeps them there.
 
 **Working copy:** `~/Projects/slapss/slapss-public` → `theshiver/slapss-app` (public).
 
-> The old repository `~/Projects/slapss/slapss-app` is a **read-only archive** of
-> the pre-open-source history. It still contains commits authored from a
-> corporate email address. Its push remote has been deliberately broken so a
-> reflexive `git push` there fails loudly. Don't develop in it, and don't
-> re-point its remote.
+> `theshiver/slapss-app-archive` is a **read-only archive** of the pre-open-source
+> history, kept private because it still contains commits authored from a
+> corporate email address. Its working copy was deleted from
+> `~/Projects/slapss` on 2026-08-21, since a folder named `slapss-app` sitting
+> next to the real one was a standing trap. Don't clone it back into that
+> workspace; if you need it for a history lookup, clone it elsewhere and don't
+> develop in it.
 
 ---
 
@@ -130,7 +132,16 @@ version users can't install yet.
 
 Copy the `CHANGELOG.md` entry into `changelog.html`, matching the existing
 markup. Update other pages only if the release genuinely changed what they say
-(privacy, system requirements, feature copy). Then deploy.
+(privacy, system requirements, feature copy).
+
+**There is no deploy step.** Cloudflare builds and publishes from the connected
+repository on every push to `main`, so committing and pushing *is* the deploy.
+Nothing in that repo shows this; the wiring is in the Cloudflare dashboard.
+
+This step is numbered last but is not bound to the order above. Announcing a
+release on the site before the App Store build is approved is fine, and was done
+deliberately for 2.0.0. The GitHub Release is the one that has to wait, because
+it reads as "this build is available".
 
 ---
 
@@ -142,7 +153,8 @@ edit → bump 4 version values → CHANGELOG.md → CLAUDE.md → push
   → tag + push tag → Release check green
   → Xcode Cloud build → App Store Connect → submit → live
   → GitHub Release (tag, title, changelog body, label None, no binaries)
-  → slapss-web/changelog.html → deploy
+
+slapss-web/changelog.html → push to main (Cloudflare publishes it; may run ahead)
 ```
 
 ## Things that go wrong
@@ -164,5 +176,7 @@ decision in `CLAUDE.md`.
 `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. Older Xcode ignores it silently and
 fails with a wall of actor-isolation errors. See the gotchas in `CLAUDE.md`.
 
-**Accidentally working in the archive.** Check `git remote -v`. The archive's
-push remote is `no-push://archive-read-only` and will fail on purpose.
+**Accidentally working in the archive.** No longer possible by accident, since
+its working copy is gone. If you do clone it again, check `git remote -v` before
+committing: its push remote is `no-push://archive-read-only` and fails on
+purpose, so work done there silently never ships.
