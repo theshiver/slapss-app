@@ -22,11 +22,17 @@ it. Two values, both in `slapss.xcodeproj/project.pbxproj`, each appearing twice
 
 | Setting | Meaning | Example |
 |---|---|---|
-| `MARKETING_VERSION` | User-visible version | `1.8.3` |
-| `CURRENT_PROJECT_VERSION` | Build number, must increase for every App Store upload | `16` |
+| `MARKETING_VERSION` | User-visible version. **This is the one you bump.** | `1.8.3` |
+| `CURRENT_PROJECT_VERSION` | Ignored in practice — see below | `15` |
 
-CI enforces that Debug and Release agree, and that the git tag matches
-`MARKETING_VERSION`. It cannot tell you the number is *right* — that's on you.
+Both occurrences of `MARKETING_VERSION` (Debug and Release) must be updated
+together. CI enforces that they agree and that the git tag matches.
+
+**Don't bother with `CURRENT_PROJECT_VERSION`.** Xcode Cloud assigns build
+numbers itself, sequentially per product, overriding the project setting. The
+committed value is `15` while App Store Connect has already shipped build 17.
+The live counter is at App Store Connect → Xcode Cloud → Settings → **Build
+Number**, where it can also be reset if it ever needs to jump.
 
 ---
 
@@ -63,12 +69,17 @@ git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z
 
 ## 3. Build and submit — Xcode Cloud → App Store Connect
 
-This is the part that was already your normal routine. It is unchanged, with one
-caveat below.
-
-1. Xcode Cloud builds from the tagged commit.
+1. **Xcode Cloud starts automatically when the tag lands.** The *Default*
+   workflow is triggered by **Tag Changes → tags beginning with `v`** — not by
+   branch pushes. This is deliberate: the Archive action has *Distribution
+   Preparation = App Store Connect*, so a branch trigger would attempt an App
+   Store delivery on every commit, including documentation-only ones and merged
+   pull requests, and each would bounce with `ITMS-90062` / `ITMS-90186`. Plain
+   compile coverage is GitHub Actions' job, on every push.
 2. App Store Connect → select the build → submit for review.
 3. Wait for approval, then release.
+
+Build numbers are assigned by Xcode Cloud, not by you — see *Before you start*.
 
 > ### If pushes stop triggering builds
 >
@@ -139,9 +150,10 @@ edit → bump 4 version values → CHANGELOG.md → CLAUDE.md → push
 **Tag pushed before the version bump.** Release check catches it. Delete the
 tag, bump, re-tag.
 
-**Build number not incremented.** App Store Connect rejects the upload. Only
-`CURRENT_PROJECT_VERSION` has to increase; `MARKETING_VERSION` can stay the same
-for a resubmission.
+**`ITMS-90062` / `ITMS-90186` — version already approved, train closed.** You
+tried to deliver a build under a `MARKETING_VERSION` that App Store Connect has
+already approved. Bump `MARKETING_VERSION` — the build number is not the
+problem, Xcode Cloud already increments that on its own.
 
 **Shipping under the current version.** Sometimes the right call for a small
 fix. Then don't invent a new version: amend the existing `CHANGELOG.md` entry

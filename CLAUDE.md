@@ -124,8 +124,9 @@ The accent layer (blobs/dots, pill, hero tints, join-button fill, brand gradient
 ## Versioning
 
 - `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` live in `slapss.xcodeproj/project.pbxproj` (two occurrences each — Debug + Release).
-- Always bump both together. Always ask Can for the version number first.
-- Current version: **1.8.2** (build 15)
+- **Only `MARKETING_VERSION` matters for a release.** Bump both its occurrences together, and always ask Can for the number first.
+- **`CURRENT_PROJECT_VERSION` is dead weight.** Xcode Cloud assigns the build number itself, sequentially per product, and overrides whatever the project says. The committed value reads `15` while App Store Connect has already delivered build 17 and is on 19 next. Don't bump it, and don't trust it — the real counter lives in App Store Connect → Xcode Cloud → Settings → Build Number.
+- Current version: **1.8.2**
 
 ---
 
