@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Store Connect export-compliance bypass.
+	     Slapss only uses HTTPS (Microsoft Graph, MSAL OAuth) and standard
+	     Apple authentication crypto. Both are exempt under the U.S. EAR
+	     encryption export rules, so we declare false here and avoid the
+	     "Missing Compliance" prompt on every TestFlight / App Store build.
+	     See: https://developer.apple.com/documentation/security/complying_with_encryption_export_regulations -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.cancetin.slapss.msauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>msauth.com.cancetin.slapss</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Slapss reads your calendar events to show upcoming meetings and alert you before they start.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Slapss reads today's reminders to surface them in the menu bar popover alongside your meetings.</string>
+</dict>
+</plist>

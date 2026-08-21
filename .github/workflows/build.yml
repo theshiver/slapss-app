@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (unsigned)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      # Signing is disabled so the build works without the upstream Apple
+      # developer team. This only proves it compiles — it does not produce a
+      # runnable, notarized app.
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project slapss.xcodeproj \
+            -scheme slapss \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            | { command -v xcbeautify >/dev/null && xcbeautify || cat; }
+        env:
+          NSUnbufferedIO: YES

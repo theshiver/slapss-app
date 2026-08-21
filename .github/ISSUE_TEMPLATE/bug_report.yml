@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in Slapss doesn't work the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Slapss is maintained by one person alongside a
+        full-time job, so please include enough detail to reproduce the problem
+        without a back-and-forth.
+
+        **Security issue?** Don't file it here — see [SECURITY.md](https://github.com/theshiver/slapss-app/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the menu bar popover
+        2. ...
+        3. The alert never fires
+    validations:
+      required: true
+
+  - type: input
+    id: slapss-version
+    attributes:
+      label: Slapss version
+      description: Settings → About
+      placeholder: "1.8.2"
+    validations:
+      required: true
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: Apple menu → About This Mac
+      placeholder: "15.5 (Apple silicon)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: calendar-source
+    attributes:
+      label: Calendar source
+      description: Where do the affected meetings come from?
+      multiple: true
+      options:
+        - macOS Calendar (EventKit)
+        - macOS Reminders
+        - Microsoft 365 / Exchange
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Slapss?
+      options:
+        - Mac App Store
+        - Built from source
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, a recording, relevant settings (theme, lead time, multiple displays, Presenting Now).
+    validations:
+      required: false

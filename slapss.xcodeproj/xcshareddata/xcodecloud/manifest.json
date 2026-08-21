@@ -1,0 +1,9 @@
+{
+  "id" : "27c15160-744d-49b4-85d5-2bd95c922244",
+  "targets" : [
+    {
+      "id" : "94a6010f-ae74-4de8-afa8-e8f306a28adb",
+      "name" : "slapss"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support question
+    url: https://slapss-app.com/support.html
+    about: Not sure it's a bug? Start here, or email info@slapss-app.com. GitHub issues are for reproducible bugs.
+  - name: Security vulnerability
+    url: https://github.com/theshiver/slapss-app/blob/main/SECURITY.md
+    about: Please report security issues privately by email, not as a public issue.
