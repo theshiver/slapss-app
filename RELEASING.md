@@ -70,23 +70,32 @@ caveat below.
 2. App Store Connect → select the build → submit for review.
 3. Wait for approval, then release.
 
-> ### ⚠️ Verify this once, before the next release
+> ### If pushes stop triggering builds
 >
-> Xcode Cloud was connected to `theshiver/slapss-app` while that name pointed at
-> the **old private repository**. That repository has since been renamed to
-> `slapss-app-archive`, and a **different, new repository** now sits at the
-> original name.
+> This bit once already, on the day the repository went public, and the failure
+> is silent — pushes succeed, GitHub CI goes green, and Xcode Cloud simply never
+> runs.
 >
-> Which one Xcode Cloud is now attached to depends on whether it tracks the
-> repository by ID (→ follows the rename, still building the archive) or by URL
-> (→ now building the public repo). **Do not assume.**
+> **Cause.** Xcode Cloud connects through a GitHub App installation that tracks
+> the repository by **internal ID, not by URL**. When the original private
+> repository was renamed to `slapss-app-archive` and a brand-new repository was
+> created at the old name, the installation followed the *rename* — so it stayed
+> attached to the archive. The URL shown in App Store Connect still read
+> `https://github.com/theshiver/slapss-app.git` and looked correct, because it
+> is stored as a plain string that happened to match the new repository's URL.
+> Nothing indicated a problem.
 >
-> Check in App Store Connect → your app → **Xcode Cloud** → **Settings** →
-> **Repositories**, and confirm it points at the public `theshiver/slapss-app`.
-> If it points at `slapss-app-archive`, re-point it and re-authorize GitHub
-> access. Symptom of getting this wrong: pushes to the public repo silently stop
-> triggering builds, or Xcode Cloud builds a version of the code that no longer
-> matches what's published.
+> **Fix.** In App Store Connect → your app → Xcode Cloud → Settings →
+> Repositories, re-enter and save the repository URL. That forces Xcode Cloud to
+> re-resolve the name and bind to the new repository's ID. Builds resume
+> immediately.
+>
+> **Check first**, at <https://github.com/settings/installations> → Xcode Cloud →
+> Configure: if "Repository access" is set to *Only select repositories*, the
+> public `slapss-app` has to be in that list.
+>
+> The same trap applies to any future rename, transfer, or recreation of the
+> repository. Renaming a repo on GitHub is not a no-op for Xcode Cloud.
 
 ## 4. GitHub Release
 
