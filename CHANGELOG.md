@@ -5,6 +5,10 @@ All notable user-facing changes to Slapss.
 This file is the source of truth for release notes. The public web changelog and
 GitHub Releases are generated from it.
 
+## Unreleased
+
+- Join Yandex Telemost meetings directly from links in calendar event descriptions and locations.
+
 ## v2.2.0 — September 23, 2026
 
 A release about how Slapss looks and feels.

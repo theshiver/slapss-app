@@ -20,6 +20,7 @@ enum MeetingLinkDetector {
             ("Webex", #"https?://[a-zA-Z0-9.-]*webex\.com/[^\s<>"]+"#),
             ("Whereby", #"https?://[a-zA-Z0-9.-]*whereby\.com/[^\s<>"]+"#),
             ("Around", #"https?://meet\.around\.co/[^\s<>"]+"#),
+            ("Telemost", #"https?://telemost\.(?:[a-zA-Z0-9-]+\.)*yandex\.(?:ru|com)/[^\s<>"]+"#),
         ]
         return raws.compactMap { name, raw in
             guard let regex = try? NSRegularExpression(pattern: raw, options: [.caseInsensitive]) else {
