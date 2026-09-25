@@ -98,6 +98,12 @@ For video, record the demo app's windows with ScreenCaptureKit (`SCContentFilter
 
 A `CODE_SIGNING_ALLOWED=NO` build runs **without the sandbox**, so it reads and writes `~/Library/Preferences/com.cancetin.slapss.plist` instead of the container: empty settings, and that plist is left behind. Delete it afterwards; the real app never reads it.
 
+### `@Published` emits before the property changes
+A `settings.$foo.sink` runs in `willSet`: inside it, `settings.foo` still holds the **old** value. `AlertScheduler`'s settings sinks call `reschedule`, which reads `settings`, so a change there applies only on the next 30-second poll. Harmless so far, but a sink that must act on the new value immediately needs the value passed in, or `.receive(on: DispatchQueue.main)` (as `$alertExcludedKeywords` has since 2.2.1).
+
+### Testing a Debug build while another copy runs
+Two running processes named `slapss` confuse System Events: it resolves both to the first pid, so AppleScript/JXA reads and clicks land in the wrong app, and ⌘, goes to whichever is frontmost. Quit the other copy first. Also: `defaults read/write com.cancetin.slapss` targets the App Store build's sandbox container once one exists, not the plist an unsigned Debug build uses; seed Debug values through the argument domain instead (`-slapss.alertExcludedKeywords '(Lunch, "Focus time")'`; quote anything with a space or the whole value silently parses as a string).
+
 ### One design language since 2.2.0, built from three shared pieces
 The alert, popover, onboarding and Settings share: `meshCard(theme:cornerRadius:energy:animating:)` and `ctaFill(_:cornerRadius:enabled:)` (Theme.swift), and `glassSurface(cornerRadius:fill:)` + `Tokens.edgeTop/edgeBottom` (ContentView.swift). New surfaces should use these rather than restyling locally. The mesh appears only on "brand moment" cards (popover hero, onboarding welcome, About banner, theme swatches); lists stay calm. Settings keeps the native grouped `Form` on purpose. Every animated mesh takes an `animating` flag tied to real visibility: `PopoverVisibilityMonitor` in the popover, `controlActiveState == .key` in windows.
 

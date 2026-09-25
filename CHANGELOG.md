@@ -5,6 +5,13 @@ All notable user-facing changes to Slapss.
 This file is the source of truth for release notes. The public web changelog and
 GitHub Releases are generated from it.
 
+## v2.2.1 — September 25, 2026
+
+- The **Show alert** setting is now a menu instead of a slider: at meeting start, 10 or 30 seconds before, or 1, 2, 5, 10 or 15 minutes before. **Custom…** covers anything in between, from 5 seconds to 15 minutes. If you had picked a time that isn't in the menu, it stays exactly as it was and shows under Custom.
+- You can now switch off the alert for meetings by keyword. In Preferences, General, Alerts, add words like "Lunch" or "PTO" under **Don't alert for meetings containing**. A meeting whose title has one of them gets no full-screen alert and no heads-up notification. It stays in the menu bar agenda, marked "No full-screen alert". Words match at the start of a word and ignore capitals and accents, so "lunch" catches "Team lunch" but not "Brunch".
+- The **Join** button now works when your company's email security has wrapped the meeting link: Microsoft Safe Links, Proofpoint URL Defense and Barracuda Link Protection. Slapss unwraps the link on your Mac, without any network request, and opens the meeting directly, Teams meetings in the Teams app. This skips the security scanner's click-through page, and only happens when the link inside is a Zoom, Teams, Google Meet, Webex, Whereby or Around meeting. Mimecast links can't be unwrapped without contacting Mimecast, so they still aren't recognized.
+- Fixed: the alert timing read "1 minutes before".
+
 ## v2.2.0 — September 23, 2026
 
 A release about how Slapss looks and feels.

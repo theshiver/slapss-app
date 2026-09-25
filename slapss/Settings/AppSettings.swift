@@ -40,6 +40,7 @@ final class AppSettings: ObservableObject {
         static let overlayLeadTimeSeconds = "slapss.overlayLeadTimeSeconds"
         static let showReminderOverlay = "slapss.showReminderOverlay"
         static let onlyAcceptedMeetings = "slapss.onlyAcceptedMeetings"
+        static let alertExcludedKeywords = "slapss.alertExcludedKeywords"
         static let theme = "slapss.theme"
     }
 
@@ -111,12 +112,10 @@ final class AppSettings: ObservableObject {
     }
 
     /// How many seconds before a meeting's start time the full-screen overlay
-    /// fires. 0 = at the exact start. The Settings UI edits this as one of
-    /// three units — at start (0), seconds (5–55, step 5), or minutes
-    /// (1–15, stored as minutes × 60) — derived from this raw value via
-    /// `SettingsView.overlayLeadUnit` (multiple-of-60 = minutes, else
-    /// seconds). Default: 0 — preserves existing behaviour for existing
-    /// users.
+    /// fires. 0 = at the exact start. The Settings UI offers a preset menu
+    /// plus a Custom stepper (5–55 s, 1–15 min); see
+    /// `SettingsView.overlayLeadPresets`. Values outside both lists (legacy
+    /// free-typed ones) are kept as stored, never snapped. Default: 0.
     @Published var overlayLeadTimeSeconds: Int {
         didSet { defaults.set(overlayLeadTimeSeconds, forKey: Key.overlayLeadTimeSeconds) }
     }
@@ -135,6 +134,37 @@ final class AppSettings: ObservableObject {
     /// Default: false — preserves existing behaviour for existing users.
     @Published var onlyAcceptedMeetings: Bool {
         didSet { defaults.set(onlyAcceptedMeetings, forKey: Key.onlyAcceptedMeetings) }
+    }
+
+    /// Words that switch off the full-screen alert and lead notification for
+    /// meetings whose title contains them ("Lunch", "PTO"). Like
+    /// `onlyAcceptedMeetings` this is scheduler-only: matching meetings stay
+    /// in the popover, marked as alert-off. Default: empty.
+    @Published var alertExcludedKeywords: [String] {
+        didSet { defaults.set(alertExcludedKeywords, forKey: Key.alertExcludedKeywords) }
+    }
+
+    /// True when `title` contains one of `alertExcludedKeywords` at the start
+    /// of a word, ignoring case and accents: "lunch" matches "Team lunch" and
+    /// "Lunches", "pto" does not match "Crypto sync". Plain substring search,
+    /// no regex, so nothing the user types is interpreted.
+    func isAlertExcluded(title: String) -> Bool {
+        let fold: (String) -> String = {
+            $0.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        }
+        let t = fold(title)
+        return alertExcludedKeywords.contains { keyword in
+            let k = fold(keyword.trimmingCharacters(in: .whitespaces))
+            guard !k.isEmpty else { return false }
+            var from = t.startIndex
+            while let r = t.range(of: k, range: from..<t.endIndex) {
+                if r.lowerBound == t.startIndex { return true }
+                let before = t[t.index(before: r.lowerBound)]
+                if !before.isLetter && !before.isNumber { return true }
+                from = t.index(after: r.lowerBound)
+            }
+            return false
+        }
     }
 
     /// Master switch for the per-calendar Google `authuser` picker. Off by
@@ -225,6 +255,7 @@ final class AppSettings: ObservableObject {
         // Defaults to false (UserDefaults.bool returns false for a missing key)
         // so existing users keep firing overlays for tentative meetings.
         self.onlyAcceptedMeetings = defaults.bool(forKey: Key.onlyAcceptedMeetings)
+        self.alertExcludedKeywords = defaults.stringArray(forKey: Key.alertExcludedKeywords) ?? []
 
         // Theme — falls back to .sunset (the original look) for missing or
         // unrecognized stored values.

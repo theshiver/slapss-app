@@ -162,6 +162,21 @@ final class AlertScheduler: ObservableObject {
             }
             .store(in: &cancellables)
 
+        settings.$alertExcludedKeywords
+            .dropFirst()
+            // @Published emits in willSet; hop one runloop turn so
+            // reschedule reads the new list, not the old one.
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, let agg = self.aggregator else { return }
+                    // Same as onlyAcceptedMeetings: re-evaluate everything.
+                    self.scheduledEffectiveStart.removeAll()
+                    self.reschedule(for: agg.upcomingMeetings)
+                }
+            }
+            .store(in: &cancellables)
+
         // Opt out of App Nap. In v1 the start-time `Timer.scheduledTimer`
         // silently slipped (or was skipped entirely) when the system put us
         // to sleep while the popover was closed — that was the dominant
@@ -277,6 +292,13 @@ final class AlertScheduler: ObservableObject {
             // scheduler-only). Reminders have no RSVP and are never filtered.
             if onlyAccepted && !meeting.isReminder
                 && (meeting.rsvp == .tentative || meeting.rsvp == .declined) {
+                cancelScheduling(for: meeting)
+                continue
+            }
+
+            // Keyword filter ("Lunch", "PTO"): same treatment as the RSVP
+            // filter above — no overlay, no lead notification, still listed.
+            if !meeting.isReminder && settings?.isAlertExcluded(title: meeting.title) == true {
                 cancelScheduling(for: meeting)
                 continue
             }

@@ -19,8 +19,8 @@ step, and the order below is what keeps them there.
 ## Before you start
 
 Decide the version number. Nothing else in this document works until you have
-it. Two values, both in `slapss.xcodeproj/project.pbxproj`, each appearing twice
-(Debug and Release) — **all four must be updated together**:
+it. Two settings live in `slapss.xcodeproj/project.pbxproj`, each appearing twice
+(Debug and Release), but **only `MARKETING_VERSION` is bumped**:
 
 | Setting | Meaning | Example |
 |---|---|---|
@@ -41,7 +41,7 @@ Number**, where it can also be reset if it ever needs to jump.
 ## 1. Code and docs — one commit, together
 
 1. Make the change.
-2. Bump both version settings (all four occurrences).
+2. Bump `MARKETING_VERSION` (both occurrences). Leave `CURRENT_PROJECT_VERSION` alone.
 3. **`CHANGELOG.md`** — add a `## vX.Y.Z — Month D, YYYY` entry at the top.
    Plain user language, no implementation detail. This is the source of truth
    everything else is copied from.
@@ -156,7 +156,7 @@ step 4.
 ## The short version
 
 ```
-edit → bump 4 version values → CHANGELOG.md → ENGINEERING-LOG.md → push
+edit → bump MARKETING_VERSION (×2) → CHANGELOG.md → ENGINEERING-LOG.md → push
   → Build green
   → tag + push tag → Release check green
   → Xcode Cloud build → App Store Connect → submit → live

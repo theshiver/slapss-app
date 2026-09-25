@@ -43,39 +43,63 @@ struct SettingsView: View {
 
     // MARK: - Helpers
 
-    /// Discrete steps for the overlay lead-time slider: at meeting start,
-    /// 30 seconds, then 1–15 whole minutes (15 is Can's cap for the
-    /// full-screen alert). 17 detents total.
-    private static let overlayLeadSteps: [Int] = [0, 30] + (1...15).map { $0 * 60 }
+    /// Menu presets for the overlay lead time, in seconds. Short on purpose
+    /// (the calendar-app pattern): anything else lives under "Custom…", so a
+    /// new value never has to grow this list. 15 min is Can's cap.
+    private static let overlayLeadPresets: [Int] = [0, 10, 30, 60, 120, 300, 600, 900]
 
-    /// Index of the step closest to the stored seconds value. Legacy
-    /// free-typed values that don't fall on a detent (e.g. 45 s from the
-    /// v1.8.1 text field) snap to the nearest step on read — no migration.
-    private var overlayLeadStepIndex: Int {
-        let s = settings.overlayLeadTimeSeconds
-        return Self.overlayLeadSteps.indices.min {
-            abs(Self.overlayLeadSteps[$0] - s) < abs(Self.overlayLeadSteps[$1] - s)
-        } ?? 0
+    /// Values the Custom stepper walks through: 5–55 s in 5 s steps, then
+    /// 1–15 whole minutes.
+    private static let overlayLeadCustomSteps: [Int] =
+        Array(stride(from: 5, through: 55, by: 5)) + (1...15).map { $0 * 60 }
+
+    /// Picker tag for "Custom…". Never stored.
+    private static let overlayLeadCustomTag = -1
+
+    /// Set when the user picks "Custom…" while on a preset value. Otherwise
+    /// the Custom row shows only for stored values outside the presets.
+    @State private var overlayLeadCustomChosen = false
+
+    private var overlayLeadIsCustom: Bool {
+        overlayLeadCustomChosen || !Self.overlayLeadPresets.contains(settings.overlayLeadTimeSeconds)
     }
 
-    /// Slider position ↔ stored seconds. The slider moves over step
-    /// *indices* (0...16), not seconds, so detents are evenly spaced even
-    /// though the underlying values aren't linear (0, 30 s, 1–15 min).
-    private var overlayLeadSliderValue: Binding<Double> {
+    private var overlayLeadSelection: Binding<Int> {
         Binding(
-            get: { Double(overlayLeadStepIndex) },
-            set: { settings.overlayLeadTimeSeconds = Self.overlayLeadSteps[Int($0.rounded())] }
+            get: { overlayLeadIsCustom ? Self.overlayLeadCustomTag : settings.overlayLeadTimeSeconds },
+            set: { tag in
+                if tag == Self.overlayLeadCustomTag {
+                    overlayLeadCustomChosen = true
+                } else {
+                    overlayLeadCustomChosen = false
+                    settings.overlayLeadTimeSeconds = tag
+                }
+            }
         )
     }
 
-    /// Full sentence for the current selection ("30 seconds before",
-    /// "5 minutes before", "At meeting start") — shown live next to the
-    /// slider and used as the accessibility value, so neither sighted users
-    /// nor VoiceOver ever get a bare, unit-less number.
-    private var overlayLeadLabel: String {
-        let s = Self.overlayLeadSteps[overlayLeadStepIndex]
+    /// Moves to the next custom step above/below the stored value. The
+    /// stored value itself is never snapped: a legacy value off the steps
+    /// (e.g. 45 s or 90 s from the v1.8.1 text field) keeps firing exactly
+    /// as before until the user touches the stepper.
+    private func stepOverlayLead(up: Bool) {
+        let s = settings.overlayLeadTimeSeconds
+        let steps = Self.overlayLeadCustomSteps
+        if let next = up ? steps.first(where: { $0 > s }) : steps.last(where: { $0 < s }) {
+            // Stay in Custom when a step lands on a preset (90 s → 2 min),
+            // or the row would vanish under the user's pointer.
+            overlayLeadCustomChosen = true
+            settings.overlayLeadTimeSeconds = next
+        }
+    }
+
+    /// Full sentence for a lead time ("30 seconds before", "1 minute
+    /// before", "At meeting start"). Menu items, the Custom row and the
+    /// VoiceOver value all use it, so nobody gets a bare, unit-less number.
+    private func overlayLeadLabel(_ s: Int) -> String {
         if s == 0 { return lm["settings.alert.early.0"] }
-        if s < 60 { return lm.t("settings.alert.early.secondsFormat", s) }
+        if s == 60 { return lm["settings.alert.early.1min"] }
+        if s % 60 != 0 { return lm.t("settings.alert.early.secondsFormat", s) }
         return lm.t("settings.alert.early.minutesFormat", s / 60)
     }
 
@@ -134,22 +158,30 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                LabeledContent(lm["settings.alert.showEarly"]) {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(overlayLeadLabel)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        Slider(
-                            value: overlayLeadSliderValue,
-                            in: 0...Double(Self.overlayLeadSteps.count - 1),
-                            step: 1
-                        )
-                        .frame(width: 200)
-                        .accessibilityValue(overlayLeadLabel)
+                Picker(lm["settings.alert.showEarly"], selection: overlayLeadSelection) {
+                    ForEach(Self.overlayLeadPresets, id: \.self) { s in
+                        Text(overlayLeadLabel(s)).tag(s)
+                    }
+                    Divider()
+                    Text(lm["settings.alert.early.custom"]).tag(Self.overlayLeadCustomTag)
+                }
+                .pickerStyle(.menu)
+                if overlayLeadIsCustom {
+                    LabeledContent(lm["settings.alert.early.customLabel"]) {
+                        HStack(spacing: 6) {
+                            Text(overlayLeadLabel(settings.overlayLeadTimeSeconds))
+                                .monospacedDigit()
+                            Stepper("") {
+                                stepOverlayLead(up: true)
+                            } onDecrement: {
+                                stepOverlayLead(up: false)
+                            }
+                            .labelsHidden()
+                            .accessibilityLabel(lm["settings.alert.early.customLabel"])
+                            .accessibilityValue(overlayLeadLabel(settings.overlayLeadTimeSeconds))
+                        }
                     }
                 }
-                .accessibilityValue(overlayLeadLabel)
                 // …and this one is the full-screen takeover alert.
                 Text(lm["settings.alert.showEarly.caption"])
                     .font(.caption)
@@ -163,6 +195,18 @@ struct SettingsView: View {
                 // scheduler-only — without this line users think it's broken
                 // when a tentative meeting still shows up in the agenda.
                 Text(lm["settings.alert.onlyAccepted.caption"])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(lm["settings.alert.excludeKeywords"])
+                    KeywordTokenField(
+                        tokens: $settings.alertExcludedKeywords,
+                        placeholder: lm["settings.alert.excludeKeywords.placeholder"]
+                    )
+                    .accessibilityLabel(lm["settings.alert.excludeKeywords"])
+                }
+                Text(lm["settings.alert.excludeKeywords.caption"])
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -646,5 +690,58 @@ struct SettingsView: View {
                 aggregator.setEnabledGraphCalendars(settings.enabledGraphCalendarIDs)
             }
         )
+    }
+}
+
+/// AppKit's token field (Mail's To: field): each word becomes a removable
+/// chip on Return or comma. SwiftUI has no equivalent. Tokens are written back
+/// only when a token is committed or editing ends, never per keystroke, so a
+/// half-typed "l" never briefly silences every meeting with an L-word.
+private struct KeywordTokenField: NSViewRepresentable {
+    @Binding var tokens: [String]
+    let placeholder: String
+
+    func makeNSView(context: Context) -> NSTokenField {
+        let field = NSTokenField()
+        field.delegate = context.coordinator
+        field.placeholderString = placeholder
+        field.objectValue = tokens
+        return field
+    }
+
+    func updateNSView(_ field: NSTokenField, context: Context) {
+        context.coordinator.parent = self
+        field.placeholderString = placeholder
+        // Don't clobber text the user is still typing.
+        if field.currentEditor() == nil, (field.objectValue as? [String]) != tokens {
+            field.objectValue = tokens
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    final class Coordinator: NSObject, NSTokenFieldDelegate {
+        var parent: KeywordTokenField
+        init(parent: KeywordTokenField) { self.parent = parent }
+
+        func tokenField(_ tokenField: NSTokenField, shouldAdd tokens: [Any], at index: Int) -> [Any] {
+            // objectValue doesn't include the new token until this returns.
+            DispatchQueue.main.async { self.commit(tokenField) }
+            return tokens
+        }
+
+        func controlTextDidEndEditing(_ obj: Notification) {
+            if let field = obj.object as? NSTokenField { commit(field) }
+        }
+
+        /// Trims, drops empties, and de-duplicates case-insensitively,
+        /// keeping the first spelling.
+        private func commit(_ field: NSTokenField) {
+            var seen = Set<String>()
+            let cleaned = (field.objectValue as? [Any] ?? [])
+                .compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
+            if cleaned != parent.tokens { parent.tokens = cleaned }
+        }
     }
 }

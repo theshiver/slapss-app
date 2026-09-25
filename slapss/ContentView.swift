@@ -875,6 +875,9 @@ private struct HeroCardView: View {
     @ViewBuilder
     private var metaList: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if !event.isReminder && settings.isAlertExcluded(title: event.title) {
+                MetaLine(systemImage: "bell.slash.fill", text: lm["popover.alertOff"])
+            }
             if let location = event.location, !location.isEmpty {
                 MetaLine(systemImage: "mappin.circle.fill", text: location)
             }
@@ -1098,6 +1101,7 @@ private struct AgendaRow: View {
             || (event.location.map { !$0.isEmpty } ?? false)
             || !event.attendees.isEmpty
             || joinURL != nil
+        let alertOff = isAlertOff
 
         VStack(spacing: 0) {
             // MARK: Row header (always visible)
@@ -1153,12 +1157,23 @@ private struct AgendaRow: View {
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(event.title)
-                                .font(.system(size: 13, weight: .medium))
-                                .tracking(-0.1)
-                                .foregroundStyle(dimmed ? Tokens.ink4 : Tokens.ink)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
+                            HStack(spacing: 4) {
+                                // Keyword-filtered: muted title + bell-slash,
+                                // so it reads as "listed, but won't take over
+                                // the screen".
+                                if alertOff {
+                                    Image(systemName: "bell.slash")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(Tokens.ink4)
+                                        .accessibilityHidden(true)
+                                }
+                                Text(event.title)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .tracking(-0.1)
+                                    .foregroundStyle(dimmed ? Tokens.ink4 : alertOff ? Tokens.ink3 : Tokens.ink)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                            }
                             Text(metaText)
                                 .font(.system(size: 11))
                                 .foregroundStyle(Tokens.ink3)
@@ -1172,6 +1187,7 @@ private struct AgendaRow: View {
                 .disabled(!hasContent)
                 .clickCursor()
                 .accessibilityLabel("\(event.title), \(metaText)")
+                .help(alertOff ? lm["popover.alertOff"] : "")
 
                 // One-click Join, a sibling of the expand Button (not nested,
                 // same accessibility reason as the reminder toggle above).
@@ -1248,6 +1264,11 @@ private struct AgendaRow: View {
         .padding(.vertical, expanded ? 2 : 0)
     }
 
+    /// Finished meetings are already dimmed; marking them adds nothing.
+    private var isAlertOff: Bool {
+        !dimmed && !event.isReminder && settings.isAlertExcluded(title: event.title)
+    }
+
     private var calendarColor: Color {
         event.calendarColor.map {
             Color(red: $0.red, green: $0.green, blue: $0.blue, opacity: $0.alpha)
@@ -1264,6 +1285,7 @@ private struct AgendaRow: View {
             return overdueLabel.map { "\($0) · \(base)" } ?? base
         }
         var parts: [String] = [event.durationString(lm: lm)]
+        if isAlertOff { parts.insert(lm["popover.alertOff"], at: 0) }
         if let loc = event.location, !loc.isEmpty {
             parts.append(loc)
         }
