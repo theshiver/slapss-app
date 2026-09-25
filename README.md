@@ -121,3 +121,5 @@ you publish a fork, it must use its own name and its own icon. See
 
 The only official build of Slapss is the one distributed from
 [the Mac App Store listing above](https://apps.apple.com/app/id6767488326).
+
+Made by [Can Çetin](https://cancetin.com/).
