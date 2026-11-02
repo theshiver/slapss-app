@@ -234,6 +234,16 @@ final class AlertScheduler: ObservableObject {
     // MARK: - Scheduling core
 
     private func reschedule(for meetings: [MeetingEvent]) {
+        // An overlay left up while the Mac slept (or unattended) outlives its
+        // meeting: the staleness checks in `fireMeetingStart` only run when an
+        // overlay opens, so nothing else ever closed it. Reminders are exempt,
+        // their end equals their start. Runs on every watchdog tick and wake.
+        if let alert = activeAlert, !alert.isReminder, Date() >= alert.endDate {
+            activeAlert = nil
+            overlayController.hide()
+            drainPendingAlerts()
+        }
+
         let currentIds = Set(meetings.map(\.id))
         let droppedIds = Set(scheduledEffectiveStart.keys).subtracting(currentIds)
 
@@ -552,6 +562,7 @@ final class AlertScheduler: ObservableObject {
         if let url = meeting.joinURL {
             let authUser = settings?.authUser(forCalendarID: meeting.calendarID)
             MeetingURLOpener.open(url, authUser: authUser)
+            ReviewPrompt.recordJoin()
         }
         dismiss(meeting)
     }

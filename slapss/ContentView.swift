@@ -12,6 +12,7 @@
 
 import AppKit
 import Combine
+import StoreKit
 import SwiftUI
 
 // MARK: - Design tokens
@@ -88,6 +89,11 @@ struct MenuBarContentView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var scheduler: AlertScheduler
     @EnvironmentObject private var lm: LocalizationManager
+    @EnvironmentObject private var popoverVisibility: PopoverVisibilityMonitor
+
+    /// Apple's rating prompt. Asked from the popover, never from the alert:
+    /// opening the popover is a calm moment, an alert is the start of a meeting.
+    @Environment(\.requestReview) private var requestReview
 
     /// Tick the popup once a minute so the "Up next · 12m" pill, the live
     /// in-progress remainder, and the buckets between Later/Earlier all
@@ -130,6 +136,16 @@ struct MenuBarContentView: View {
             }
         }
         .background(Tokens.paper)
+        .onChange(of: popoverVisibility.isVisible) { _, isVisible in
+            guard isVisible, ReviewPrompt.isDue() else { return }
+            // Let the popover settle, and skip it if the user already closed
+            // it (clicked Join, for example). Unasked, it waits for next time.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                guard popoverVisibility.isVisible else { return }
+                ReviewPrompt.markAsked()
+                requestReview()
+            }
+        }
         .onAppear {
             Self.disableMenuBarPopoverAnimation()
             // Wire the right-click "Preferences" menu item to SwiftUI's

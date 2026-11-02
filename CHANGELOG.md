@@ -5,6 +5,11 @@ All notable user-facing changes to Slapss.
 This file is the source of truth for release notes. The public web changelog and
 GitHub Releases are generated from it.
 
+## v2.2.3 — November 2, 2026
+
+- Fixed: a full-screen alert left on screen while your Mac slept was still there when you woke it, even after the meeting had ended. Slapss now closes the alert once the meeting is over.
+- After you've joined a few meetings with Slapss, it may ask once per version whether you'd like to rate it. The question is Apple's standard rating prompt, it shows up when you open the menu bar popup and never on the full-screen alert, and macOS shows it at most three times a year.
+
 ## v2.2.2 — October 12, 2026
 
 - Fixed: snoozing the full-screen alert brought it straight back when the snooze was shorter than your **Show alert** time (for example, snoozing 3 minutes with the alert set to 10 minutes before). Snooze now waits the time you picked.

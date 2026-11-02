@@ -95,7 +95,7 @@ enum DemoMode {
                   link: "https://teams.microsoft.com/l/meetup-join/demo", attendees: Array(team.prefix(4))),
             event("Roadmap sync", now.addingTimeInterval(-90 * 60), minutes: 30,
                   location: "Room 2A", attendees: Array(team.prefix(3))),
-            event("Design review", heroStart, minutes: 30, location: "Room 4B",
+            event("Design review", heroStart, minutes: 1, location: "Room 4B",
                   link: "https://meet.google.com/abc-defg-hij", attendees: team),
             event("Sprint planning", heroStart.addingTimeInterval(3600), minutes: 45,
                   link: "https://teams.microsoft.com/l/meetup-join/demo", attendees: team),
