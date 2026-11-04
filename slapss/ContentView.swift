@@ -164,7 +164,8 @@ struct MenuBarContentView: View {
         .task {
             await aggregator.start(
                 enabledEventKitCalendars: settings.enabledEventKitCalendarIDs,
-                enabledGraphCalendars: settings.enabledGraphCalendarIDs
+                enabledGraphCalendars: settings.enabledGraphCalendarIDs,
+                remindersEnabled: settings.showReminders
             )
             // Wire scheduler to aggregator + settings on first appearance.
             // attach() is idempotent so subsequent calls are no-ops.
@@ -1626,7 +1627,8 @@ struct MenuBarLabel: View {
             // wired up to the aggregator yet. Both calls are idempotent.
             await aggregator.start(
                 enabledEventKitCalendars: settings.enabledEventKitCalendarIDs,
-                enabledGraphCalendars: settings.enabledGraphCalendarIDs
+                enabledGraphCalendars: settings.enabledGraphCalendarIDs,
+                remindersEnabled: settings.showReminders
             )
             scheduler.attach(aggregator: aggregator, settings: settings, lm: lm)
 

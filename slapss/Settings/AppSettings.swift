@@ -34,6 +34,7 @@ final class AppSettings: ObservableObject {
         /// 2.1.0 and migrated once in `init`. Never written again.
         static let showNextMeetingInMenuBar = "slapss.showNextMeetingInMenuBar"
         static let menuBarMeetingVisibility = "slapss.menuBarMeetingVisibility"
+        static let menuBarHideStartedMinutes = "slapss.menuBarHideStartedMinutes"
         static let showAlertOnAllScreens = "slapss.showAlertOnAllScreens"
         static let authUserByCalendar = "slapss.authUserByCalendar"
         static let enableGoogleAuthUser = "slapss.enableGoogleAuthUser"
@@ -94,6 +95,14 @@ final class AppSettings: ObservableObject {
     @Published var menuBarMeetingVisibility: MenuBarMeetingVisibility {
         didSet { defaults.set(menuBarMeetingVisibility.rawValue, forKey: Key.menuBarMeetingVisibility) }
     }
+
+    /// Minutes after a meeting starts before the menu bar label drops it.
+    /// `AppSettings.neverHideStarted` keeps it until it ends, the behaviour
+    /// before this setting existed. 0 hides it as soon as it starts.
+    @Published var menuBarHideStartedMinutes: Int {
+        didSet { defaults.set(menuBarHideStartedMinutes, forKey: Key.menuBarHideStartedMinutes) }
+    }
+    static let neverHideStarted = -1
 
     /// When true, the full-screen alert is mirrored on every connected
     /// display. When false, it appears only on the primary screen. Default:
@@ -230,6 +239,8 @@ final class AppSettings: ObservableObject {
         } else {
             self.menuBarMeetingVisibility = .whenClose
         }
+        self.menuBarHideStartedMinutes =
+            defaults.object(forKey: Key.menuBarHideStartedMinutes) as? Int ?? Self.neverHideStarted
 
         // Defaults to false, which UserDefaults.bool already returns for a
         // missing key — no explicit object(forKey:) dance needed.

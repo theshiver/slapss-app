@@ -25,6 +25,8 @@
 	</array>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Slapss reads your calendar events to show upcoming meetings and alert you before they start.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Slapss reads today's reminders to surface them in the menu bar popover alongside your meetings.</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>Slapss reads today's reminders to surface them in the menu bar popover alongside your meetings.</string>
 </dict>

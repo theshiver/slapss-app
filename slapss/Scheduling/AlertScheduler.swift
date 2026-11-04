@@ -667,8 +667,17 @@ final class AlertScheduler: ObservableObject {
             now: now,
             includeReminders: true,
             respectMutes: true,
-            horizon: menuBarHorizon(now: now)
+            horizon: menuBarHorizon(now: now),
+            hideStartedAfter: menuBarHideStartedAfter
         )
+    }
+
+    /// How long a started meeting stays on the *menu bar label only*; nil
+    /// keeps it until it ends. The popover's hero card never passes this.
+    private var menuBarHideStartedAfter: TimeInterval? {
+        guard let minutes = settings?.menuBarHideStartedMinutes,
+              minutes != AppSettings.neverHideStarted else { return nil }
+        return TimeInterval(minutes * 60)
     }
 
     /// How far ahead rule 3 looks for the *menu bar label only*. Every other
@@ -708,7 +717,8 @@ final class AlertScheduler: ObservableObject {
         now: Date = Date(),
         includeReminders: Bool,
         respectMutes: Bool,
-        horizon: TimeInterval = 15 * 60
+        horizon: TimeInterval = 15 * 60,
+        hideStartedAfter: TimeInterval? = nil
     ) -> MeetingEvent? {
         guard let aggregator else { return nil }
         // Pool: future-relevant items + (optionally) past-today reminders.
@@ -744,7 +754,9 @@ final class AlertScheduler: ObservableObject {
             if item.isReminder {
                 return item.startDate <= now
             } else {
-                return item.startDate <= now && now < item.endDate
+                // Reminders above stay until completed; only meetings age out.
+                let hidden = hideStartedAfter.map { now >= item.startDate.addingTimeInterval($0) } ?? false
+                return item.startDate <= now && now < item.endDate && !hidden
             }
         }
         if let mostRecent = relevant.max(by: { $0.startDate < $1.startDate }) {

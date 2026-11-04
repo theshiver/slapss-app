@@ -5,6 +5,11 @@ All notable user-facing changes to Slapss.
 This file is the source of truth for release notes. The public web changelog and
 GitHub Releases are generated from it.
 
+## v2.3.0 — November 4, 2026
+
+- New: you can hide a meeting from the menu bar once it has started, right away or after 5, 10 or 15 minutes. Find it in Settings under Menu bar. By default nothing changes.
+- Fixed: turning off reminders only hid them from the list. "Show reminders" now removes them from the menu bar, notifications and full-screen alerts too, and it has moved to the Alerts section of Settings.
+
 ## v2.2.3 — November 2, 2026
 
 - Fixed: a full-screen alert left on screen while your Mac slept was still there when you woke it, even after the meeting had ended. Slapss now closes the alert once the meeting is over.

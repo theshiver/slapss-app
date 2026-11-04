@@ -20,6 +20,7 @@ final class CalendarAggregator: ObservableObject {
         case granted
     }
 
+    private var remindersEnabled = true
     @Published private(set) var permissionState: PermissionState = .notDetermined
     /// Reminders authorization is tracked separately because macOS treats
     /// it as a distinct privacy scope from calendars.
@@ -111,7 +112,8 @@ final class CalendarAggregator: ObservableObject {
     /// correct. See `EventKitSource.fetchTodayAndAhead` where empty means all.
     func start(
         enabledEventKitCalendars: Set<String> = [],
-        enabledGraphCalendars: Set<String> = []
+        enabledGraphCalendars: Set<String> = [],
+        remindersEnabled: Bool = true
     ) async {
         guard !didStart else { return }
         didStart = true
@@ -124,6 +126,7 @@ final class CalendarAggregator: ObservableObject {
         #endif
         eventKit.enabledCalendarIdentifiers = enabledEventKitCalendars
         graph.enabledCalendarIDs = enabledGraphCalendars
+        self.remindersEnabled = remindersEnabled
         setPermissionStateIfChanged(mapAccessState(eventKit.accessState))
         setReminderPermissionStateIfChanged(mapAccessState(eventKit.reminderAccessState))
         // If access was granted in a previous session, `requestAccess()` is
@@ -221,6 +224,15 @@ final class CalendarAggregator: ObservableObject {
         refresh()
     }
 
+    /// Turns reminders on or off as a data source. Gating the fetch here, not
+    /// in each surface, keeps them out of the menu bar, notifications and the
+    /// overlay together; the scheduler cancels what was already pending when
+    /// they drop out of `upcomingMeetings`.
+    func setRemindersEnabled(_ enabled: Bool) {
+        remindersEnabled = enabled
+        refresh()
+    }
+
     /// Update the set of Graph calendars to monitor.
     func setEnabledGraphCalendars(_ identifiers: Set<String>) {
         graph.enabledCalendarIDs = identifiers
@@ -275,7 +287,7 @@ final class CalendarAggregator: ObservableObject {
             guard !Task.isCancelled else { return }
             let graphEvents = await self.graph.fetchTodayAndAhead(horizon: 24 * 3600)
             guard !Task.isCancelled else { return }
-            let reminders = self.reminderPermissionState == .granted
+            let reminders = self.remindersEnabled && self.reminderPermissionState == .granted
                 ? await self.eventKit.fetchTodayReminders()
                 : []
             guard !Task.isCancelled else { return }
@@ -319,7 +331,7 @@ final class CalendarAggregator: ObservableObject {
             let ek = self.eventKit.fetchTodayAndAhead(horizon: 24 * 3600)
             guard !Task.isCancelled else { return }
             let cachedGraph = (self.upcomingMeetings + self.pastMeetingsToday).filter { $0.source == .graph }
-            let reminders = self.reminderPermissionState == .granted
+            let reminders = self.remindersEnabled && self.reminderPermissionState == .granted
                 ? await self.eventKit.fetchTodayReminders()
                 : []
             guard !Task.isCancelled else { return }
