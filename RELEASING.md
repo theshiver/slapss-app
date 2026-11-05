@@ -188,10 +188,11 @@ edit → bump MARKETING_VERSION (×2) → CHANGELOG.md → ENGINEERING-LOG.md �
   → tag + push tag → Release check green
   → Xcode Cloud build → App Store Connect → submit → live
 
-GitHub Release (tag, title, changelog body, label None, no binaries)
+GitHub Release (tag, title, changelog body, label None, notarized Homebrew zip)
+theshiver/homebrew-tap: version + sha256 in Casks/slapss.rb → push
 slapss-web/changelog.html → push to main (Cloudflare publishes it)
 
-Neither of the last two waits for App Store approval.
+None of the last three waits for App Store approval.
 ```
 
 ## Things that go wrong
