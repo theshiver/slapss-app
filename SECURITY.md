@@ -16,7 +16,7 @@ publicly. Credit in the release notes if you'd like it.
 
 ## Supported versions
 
-Only the current App Store release receives fixes. There are no maintained
+Only the current release receives fixes. There are no maintained
 older branches.
 
 ## Scope notes

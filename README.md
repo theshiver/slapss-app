@@ -10,6 +10,8 @@ A free, open-source full-screen meeting reminder for Mac.
 
 ### [Download on the Mac App Store](https://apps.apple.com/app/id6767488326)
 
+Or with Homebrew: `brew install --cask theshiver/tap/slapss`
+
 [slapss-app.com](https://slapss-app.com) · [Changelog](CHANGELOG.md) · [Support](https://slapss-app.com/support)
 
 <img src="docs/demo.gif" width="720" alt="Slapss demo: the next meeting in the menu bar, then a full-screen alert with Join, Snooze and Dismiss">
@@ -89,7 +91,7 @@ Requires macOS 15 or later.
 
 <sub>The Slapss name, app icon, menu bar mark, and logo are trademarks and not covered
 by the code license; a fork needs its own name and icon, see [TRADEMARK.md](TRADEMARK.md).
-The only official build is the one on the [Mac App Store](https://apps.apple.com/app/id6767488326).</sub>
+Official builds come only from the [Mac App Store](https://apps.apple.com/app/id6767488326) and the `theshiver/tap` Homebrew cask.</sub>
 
 <div align="center">
 

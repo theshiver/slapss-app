@@ -36,9 +36,11 @@ If you publish a fork, replace the name and the icon assets before you do.
 
 ## The official build
 
-The only official, signed distribution of Slapss is the Mac App Store listing:
+Slapss has two official, signed distributions:
 
-<https://apps.apple.com/app/id6767488326>
+- The Mac App Store listing: <https://apps.apple.com/app/id6767488326>
+- The Homebrew cask `theshiver/tap/slapss`, a notarized build attached to this
+  repository's GitHub Releases and signed with Developer ID team `S2RH54MMT3`
 
 Any other binary calling itself Slapss is not from this project. If you find one,
 please report it to <info@slapss-app.com>.

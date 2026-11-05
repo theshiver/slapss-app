@@ -1,7 +1,7 @@
 # Releasing Slapss
 
-The maintainer's checklist. Slapss ships through the Mac App Store; this
-repository is the public source mirror of what shipped. Both have to stay in
+The maintainer's checklist. Slapss ships through the Mac App Store and a
+Homebrew cask; this repository is the public source mirror of what shipped. Both have to stay in
 step, and the order below is what keeps them there.
 
 **Working copy:** `~/Projects/slapss/slapss-public` → `theshiver/slapss-app` (public).
@@ -129,10 +129,35 @@ releases as availability, put the old ordering back.**
 - **Title:** `vX.Y.Z`. Nothing more; the summary belongs in the body.
 - **Description:** the `CHANGELOG.md` entry, plus the App Store install link.
 - **Release label:** `None`. Pre-release is only for beta/RC tags.
-- **Do not attach binaries.** The only official build is the App Store one —
-  see [`TRADEMARK.md`](TRADEMARK.md). An unsigned `.app` here would contradict
-  that and generate Gatekeeper support mail.
+- **Attach only the notarized Homebrew zip** (next section). Never an unsigned
+  `.app`: it would contradict [`TRADEMARK.md`](TRADEMARK.md) and generate
+  Gatekeeper support mail.
 - Don't use *Generate release notes*; on this history it produces nothing useful.
+
+### Homebrew build
+
+Xcode Cloud only delivers to App Store Connect, so this build is made locally,
+from the tag, with the Developer ID certificate and the `notary` keychain profile:
+
+```bash
+V=X.Y.Z; D=$(mktemp -d)
+git checkout "v$V"
+xcodebuild archive -project slapss.xcodeproj -scheme slapss -configuration Release \
+  -destination 'generic/platform=macOS' -archivePath "$D/s.xcarchive" \
+  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Developer ID Application' \
+  DEVELOPMENT_TEAM=S2RH54MMT3 PROVISIONING_PROFILE_SPECIFIER= OTHER_CODE_SIGN_FLAGS=--timestamp
+cp -R "$D/s.xcarchive/Products/Applications/slapss.app" "$D/"; cd "$D"
+ditto -c -k --keepParent slapss.app submit.zip
+xcrun notarytool submit submit.zip --keychain-profile notary --wait
+xcrun stapler staple slapss.app
+spctl -a -vv -t exec slapss.app
+ditto -c -k --keepParent slapss.app "Slapss-$V.zip"
+gh release upload "v$V" "Slapss-$V.zip" -R theshiver/slapss-app
+shasum -a 256 "Slapss-$V.zip"
+```
+
+Then update `version` and `sha256` in `Casks/slapss.rb` in `theshiver/homebrew-tap`
+and push. Homebrew users get the release on their next `brew upgrade`.
 
 ## 5. Marketing site — separate private repo
 

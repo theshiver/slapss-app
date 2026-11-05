@@ -11,8 +11,8 @@ sends it nowhere.** In a closed-source binary that is a promise you have to take
 on faith. This repository is here so you don't have to — you can read every line
 that touches your calendar data.
 
-The app you install is still the one on the Mac App Store. Nothing about how you
-use Slapss changes.
+The app you install comes from the Mac App Store or the `theshiver/tap` Homebrew
+cask, built from the same source. Nothing about how you use Slapss changes.
 
 ## Privacy details
 
