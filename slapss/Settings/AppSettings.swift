@@ -27,6 +27,8 @@ final class AppSettings: ObservableObject {
         static let alertSoundEnabled = "slapss.alertSoundEnabled"
         static let enabledEventKitCalendarIDs = "slapss.enabledEventKitCalendarIDs"
         static let enabledGraphCalendarIDs = "slapss.enabledGraphCalendarIDs"
+        static let enabledGoogleCalendarIDs = "slapss.enabledGoogleCalendarIDs"
+        static let appleCalendarEnabled = "slapss.appleCalendarEnabled"
         static let onboardingCompleted = "slapss.onboardingCompleted"
         static let showPastMeetingsToday = "slapss.showPastMeetingsToday"
         static let showReminders = "slapss.showReminders"
@@ -63,11 +65,20 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    /// Microsoft Graph calendar identifiers the user has opted into. Empty = all.
     @Published var enabledGraphCalendarIDs: Set<String> {
         didSet {
             defaults.set(Array(enabledGraphCalendarIDs), forKey: Key.enabledGraphCalendarIDs)
         }
+    }
+
+    @Published var enabledGoogleCalendarIDs: Set<String> {
+        didSet {
+            defaults.set(Array(enabledGoogleCalendarIDs), forKey: Key.enabledGoogleCalendarIDs)
+        }
+    }
+
+    @Published var appleCalendarEnabled: Bool {
+        didSet { defaults.set(appleCalendarEnabled, forKey: Key.appleCalendarEnabled) }
     }
 
     @Published var onboardingCompleted: Bool {
@@ -206,6 +217,15 @@ final class AppSettings: ObservableObject {
         let storedGraph = defaults.array(forKey: Key.enabledGraphCalendarIDs) as? [String] ?? []
         self.enabledGraphCalendarIDs = Set(storedGraph)
 
+        let storedGoogle = defaults.array(forKey: Key.enabledGoogleCalendarIDs) as? [String] ?? []
+        self.enabledGoogleCalendarIDs = Set(storedGoogle)
+
+        if defaults.object(forKey: Key.appleCalendarEnabled) == nil {
+            self.appleCalendarEnabled = true
+        } else {
+            self.appleCalendarEnabled = defaults.bool(forKey: Key.appleCalendarEnabled)
+        }
+
         self.onboardingCompleted = defaults.bool(forKey: Key.onboardingCompleted)
         #if DEBUG
         // Assigned in init, so `didSet` doesn't persist it.
@@ -274,12 +294,12 @@ final class AppSettings: ObservableObject {
             .flatMap(AppTheme.init(rawValue:)) ?? .sunset
     }
 
-    /// Effective Google `authuser` index for a meeting's calendar, honoring the
-    /// `enableGoogleAuthUser` master switch. Returns nil when the feature is
-    /// off or no index is configured — callers can pass the result straight to
-    /// `MeetingURLOpener.open(_:authUser:)`.
-    func authUser(forCalendarID calendarID: String?) -> Int? {
-        guard enableGoogleAuthUser, let calendarID else { return nil }
-        return authUserByCalendar[calendarID]
+    func authUserValue(for event: MeetingEvent) -> String? {
+        if enableGoogleAuthUser,
+           let calendarID = event.calendarID,
+           let index = authUserByCalendar[calendarID] {
+            return String(index)
+        }
+        return event.googleAuthUserEmail
     }
 }

@@ -165,6 +165,8 @@ struct MenuBarContentView: View {
             await aggregator.start(
                 enabledEventKitCalendars: settings.enabledEventKitCalendarIDs,
                 enabledGraphCalendars: settings.enabledGraphCalendarIDs,
+                enabledGoogleCalendars: settings.enabledGoogleCalendarIDs,
+                appleCalendarEnabled: settings.appleCalendarEnabled,
                 remindersEnabled: settings.showReminders
             )
             // Wire scheduler to aggregator + settings on first appearance.
@@ -263,8 +265,10 @@ struct MenuBarContentView: View {
                     // `OnboardingView.canFinishOnboarding`: one working source
                     // is enough. The denied state is still reachable — with its
                     // "Open System Settings" button — in Settings → Calendars.
-                    if aggregator.isGraphSignedIn {
+                    if aggregator.hasAnyActiveSource {
                         agendaSections
+                    } else if aggregator.permissionState == .granted && !settings.appleCalendarEnabled {
+                        NoActiveSourcesView(onOpenPreferences: openPreferences)
                     } else {
                         switch aggregator.permissionState {
                         case .notDetermined:
@@ -362,7 +366,7 @@ struct MenuBarContentView: View {
                 HeroCardView(
                     event: hero,
                     now: now,
-                    authUser: settings.authUser(forCalendarID: hero.calendarID)
+                    authUser: settings.authUserValue(for: hero)
                 )
             } else if let nextAny = upcoming.first {
                 // Tapping expands the matching agenda row below — the line
@@ -715,6 +719,29 @@ private struct PermissionDeniedView: View {
     }
 }
 
+private struct NoActiveSourcesView: View {
+    let onOpenPreferences: () -> Void
+    @EnvironmentObject private var lm: LocalizationManager
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(lm["popover.noActiveSources.title"])
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Tokens.ink)
+            Text(lm["popover.noActiveSources.body"])
+                .font(.system(size: 11))
+                .foregroundStyle(Tokens.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(lm["popover.noActiveSources.openPrefs"], action: onOpenPreferences)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .clickCursor()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// Deep-links into System Settings' privacy panes. Centralized so both the
 /// popover's denied state and onboarding's denied step use the same URL.
 enum SystemSettingsOpener {
@@ -749,7 +776,7 @@ private struct HeroCardView: View {
     let event: MeetingEvent
     let now: Date
     /// Google `authuser` index for this meeting's calendar, if configured.
-    var authUser: Int? = nil
+    var authUser: String? = nil
 
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -931,7 +958,7 @@ private struct MetaLine: View {
 private struct JoinButton: View {
     let url: URL
     let scheme: ColorScheme
-    var authUser: Int? = nil
+    var authUser: String? = nil
     /// The overlay CTA's periodic sweep of light, for the hero's join window.
     var sheen = false
     @EnvironmentObject private var lm: LocalizationManager
@@ -980,7 +1007,7 @@ struct SpringPressStyle: ButtonStyle {
 /// learned once. The 26pt circle is the hit target.
 private struct RowJoinButton: View {
     let url: URL
-    var authUser: Int? = nil
+    var authUser: String? = nil
     @State private var hovering = false
     @EnvironmentObject private var lm: LocalizationManager
     @EnvironmentObject private var settings: AppSettings
@@ -1118,6 +1145,8 @@ private struct AgendaRow: View {
             || (event.location.map { !$0.isEmpty } ?? false)
             || !event.attendees.isEmpty
             || joinURL != nil
+            || event.eventKitIdentifier != nil
+            || event.calendarWebURL != nil
         let alertOff = isAlertOff
 
         VStack(spacing: 0) {
@@ -1213,7 +1242,7 @@ private struct AgendaRow: View {
                 if let url = joinURL, !dimmed {
                     RowJoinButton(
                         url: url,
-                        authUser: settings.authUser(forCalendarID: event.calendarID)
+                        authUser: settings.authUserValue(for: event)
                     )
                     .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] - Self.trailingControlDrop }
                 }
@@ -1377,18 +1406,13 @@ private struct AgendaRowDetailPanel: View {
                 JoinButton(
                     url: url,
                     scheme: scheme,
-                    authUser: settings.authUser(forCalendarID: event.calendarID)
+                    authUser: settings.authUserValue(for: event)
                 )
                 .padding(.top, 2)
             }
 
-            // "Open in Calendar" — only meaningful for events that actually
-            // have a native Calendar.app entry (EventKit meetings; not
-            // reminders, not Graph/Exchange events, which live server-side).
-            if let eventID = event.eventKitIdentifier {
-                Button {
-                    MeetingURLOpener.openInCalendar(eventIdentifier: eventID)
-                } label: {
+            if let openCalendarAction = calendarOpenAction {
+                Button(action: openCalendarAction) {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar")
                             .font(.system(size: 11))
@@ -1404,6 +1428,16 @@ private struct AgendaRowDetailPanel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var calendarOpenAction: (() -> Void)? {
+        if let eventID = event.eventKitIdentifier {
+            return { MeetingURLOpener.openInCalendar(eventIdentifier: eventID) }
+        }
+        if let webURL = event.calendarWebURL {
+            return { NSWorkspace.shared.open(webURL) }
+        }
+        return nil
     }
 }
 
@@ -1628,6 +1662,8 @@ struct MenuBarLabel: View {
             await aggregator.start(
                 enabledEventKitCalendars: settings.enabledEventKitCalendarIDs,
                 enabledGraphCalendars: settings.enabledGraphCalendarIDs,
+                enabledGoogleCalendars: settings.enabledGoogleCalendarIDs,
+                appleCalendarEnabled: settings.appleCalendarEnabled,
                 remindersEnabled: settings.showReminders
             )
             scheduler.attach(aggregator: aggregator, settings: settings, lm: lm)

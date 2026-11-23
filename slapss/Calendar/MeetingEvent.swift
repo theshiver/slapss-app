@@ -27,23 +27,18 @@ struct MeetingEvent: Identifiable, Hashable {
     /// `authuser` index. Defaults to nil so existing call sites stay valid.
     var calendarID: String? = nil
     let source: Source
-    /// Attendee display names (or email addresses if name not available).
-    /// Used for the avatar stack on the alert UI.
     let attendees: [String]
-    /// Distinguishes calendar events from reminders. Defaults to `.meeting`
-    /// so existing call sites (and stored snapshots) stay valid.
     var kind: Kind = .meeting
-
-    /// The current user's RSVP response for this event, when the source
-    /// exposes it. Consumed by the optional "only accepted meetings" overlay
-    /// filter in `AlertScheduler`. Defaults to `.unknown` so sources and paths
-    /// that don't set it (reminders, local calendars, dummy snapshots) are
-    /// never filtered out.
     var rsvp: RSVP = .unknown
+    var iCalUID: String? = nil
+    var calendarWebURL: URL? = nil
+    var matchedEventKitIdentifier: String? = nil
+    var googleAuthUserEmail: String? = nil
 
     enum Source: String, Hashable {
         case eventKit
         case graph
+        case google
     }
 
     /// Current user's response to a meeting invite. Only `.tentative` and
@@ -91,6 +86,7 @@ struct MeetingEvent: Identifiable, Hashable {
     /// occurrences stay distinct (see `EventKitSource.toMeetingEvent`). Calendar.app's
     /// URL scheme wants the bare event identifier, so strip it back off here.
     var eventKitIdentifier: String? {
+        if let matchedEventKitIdentifier { return matchedEventKitIdentifier }
         guard source == .eventKit, !isReminder, id.hasPrefix("ek:") else { return nil }
         let body = String(id.dropFirst("ek:".count))
         guard let separator = body.lastIndex(of: "#") else { return body }

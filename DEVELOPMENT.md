@@ -19,21 +19,22 @@ cask, built from the same source. Nothing about how you use Slapss changes.
 There is no Slapss server. There is nothing to have an outage.
 
 - Calendar and reminder data is read through Apple's EventKit and stays on your Mac.
-- Microsoft 365 calendars are fetched directly from Microsoft Graph by the app itself, using a read-only scope (`Calendars.Read`, `User.Read`). Tokens live in your keychain.
+- Microsoft 365 calendars are fetched directly from Microsoft Graph (`login.microsoftonline.com`, `graph.microsoft.com`) by the app itself, using read-only scopes (`Calendars.Read`, `User.Read`). Tokens live locally in your keychain.
+- Google Calendar accounts (optional) are fetched directly from Google (`accounts.google.com`, `oauth2.googleapis.com`, `www.googleapis.com`) by the app itself, using read-only calendar scopes (`calendar.calendarlist.readonly`, `calendar.events.readonly`, plus `openid`, `email`). Tokens live locally in your keychain.
 - No analytics, no crash reporting SDK, no telemetry, no accounts.
-- The app is sandboxed, and its entitlements are the whole story — three of them, in [`slapss/slapss.entitlements`](slapss/slapss.entitlements): app sandbox, outbound network (for Microsoft Graph), and calendar access. Don't take this on faith, read them off the copy you installed:
+- The app is sandboxed, and its entitlements are unchanged: the exact 3 entries in [`slapss/slapss.entitlements`](slapss/slapss.entitlements) are app sandbox (`com.apple.security.app-sandbox`), outbound network client (`com.apple.security.network.client` for Microsoft Graph and Google Calendar API), and calendar access (`com.apple.security.personal-information.calendars`). Don't take this on faith, read them off the copy you installed:
   `codesign -d --entitlements :- /Applications/slapss.app`
-  Two things you may see that aren't in that file. Builds up to 2.0.0 also carried `com.apple.security.files.user-selected.read-only`, injected by an Xcode build setting (`ENABLE_USER_SELECTED_FILES`); no code path ever used it and 2.0.1 removes it. And a copy you build yourself carries `com.apple.security.get-task-allow`, which Xcode adds to local builds so a debugger can attach — App Store builds don't have it.
+  Two things you may see that aren't in that file. Builds up to 2.0.0 also carried `com.apple.security.files.user-selected.read-only`, injected by an Xcode build setting (`ENABLE_USER_SELECTED_FILES`); no code path ever used it and 2.0.1 removes it. And a copy you build yourself carries `com.apple.security.get-task-allow`, which Xcode adds to local builds so a debugger can attach, whereas App Store builds don't have it.
 
 ## Architecture
 
-~8,900 lines of Swift across 28 files, **no third-party dependencies** — no SPM
-packages, no CocoaPods, no Carthage. Even the Microsoft sign-in flow is
-hand-rolled on `ASWebAuthenticationSession` + `CryptoKit` (PKCE).
+~8,900 lines of Swift across 28 files, **no third-party dependencies** (no SPM
+packages, no CocoaPods, no Carthage). Even the Microsoft and Google sign-in
+flows are hand-rolled on `ASWebAuthenticationSession` + `CryptoKit` (PKCE).
 
 | Object | Responsibility |
 |---|---|
-| `CalendarAggregator` | Merges EventKit + Microsoft Graph sources, publishes `upcomingMeetings` |
+| `CalendarAggregator` | Merges EventKit, Microsoft Graph, and Google Calendar sources, publishes `upcomingMeetings` |
 | `AlertScheduler` | Timers, watchdog, App Nap prevention, fires and queues overlays |
 | `AppSettings` | All user preferences, persisted to `UserDefaults` |
 | `LocalizationManager` | Runtime language switching without a restart |
@@ -62,14 +63,18 @@ cd slapss-app
 open slapss.xcodeproj
 ```
 
-Two things to change for your own build:
+Three things to change for your own build:
 
-1. **Signing.** In Xcode, select the `slapss` target → Signing & Capabilities →
+1. **Signing.** In Xcode, select the `slapss` target -> Signing & Capabilities ->
    set **Team** to your own Apple developer team. The committed value is the
    upstream team and won't work for you.
-2. **Microsoft sign-in** (optional — everything else builds and runs without it).
+2. **Microsoft sign-in** (optional; everything else builds and runs without it).
    The committed Azure app registration is the upstream one. To sign in against
    your own, follow [`AZURE_SETUP.md`](AZURE_SETUP.md).
+3. **Google Calendar sign-in** (optional; everything else builds and runs without
+   it). Official builds ship with a configured Google Cloud OAuth Client ID
+   (also in `slapss/Auth/GoogleOAuthConfig.swift`). To sign in against your own
+   Google Cloud project, follow [`GOOGLE_SETUP.md`](GOOGLE_SETUP.md).
 
 To check that it compiles without any signing setup at all:
 

@@ -48,14 +48,13 @@ struct OnboardingView: View {
     // that's correct: the sequence the user sees is always contiguous.
 
     private enum StepID {
-        case language, theme, calendarAccess, reminders, microsoft, calendars,
+        case language, theme, calendarSources, reminders, calendars,
              leadTime, launchAtLogin
     }
 
     private var visibleSteps: [StepID] {
-        var steps: [StepID] = [.language, .theme, .calendarAccess, .reminders]
-        if aggregator.graph.isConfigured { steps.append(.microsoft) }
-        if aggregator.permissionState == .granted { steps.append(.calendars) }
+        var steps: [StepID] = [.language, .theme, .calendarSources, .reminders]
+        if aggregator.hasAnyActiveSource { steps.append(.calendars) }
         steps.append(.leadTime)
         steps.append(.launchAtLogin)
         return steps
@@ -82,25 +81,11 @@ struct OnboardingView: View {
                         // (hero sticker, badges, buttons) previews it live.
                         themeStep
 
-                        // 3 — required system permission. Always shown.
-                        calendarPermissionStep
+                        calendarSourcesStep
 
-                        // 4 — independent of step 3, can be granted in any
-                        // order. Optional, skippable.
                         reminderPermissionStep
 
-                        // 5 — Exchange / Microsoft 365 OAuth. Only shown if
-                        // the app has an Azure client ID configured. Optional.
-                        if aggregator.graph.isConfigured {
-                            MicrosoftStep(graph: aggregator.graph,
-                                          number: stepNumber(.microsoft))
-                        }
-
-                        // 6–8 — preferences. Calendar picker is the only one
-                        // that requires permission to be useful, so it's
-                        // gated; the other two are pure preference toggles
-                        // and stay visible regardless.
-                        if aggregator.permissionState == .granted {
+                        if aggregator.hasAnyActiveSource {
                             calendarsStep
                         }
                         leadTimeStep
@@ -206,30 +191,86 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 3: Calendar permission
+    // MARK: - Step 3: Calendar sources
 
-    private var calendarPermissionStep: some View {
-        StepCard(number: stepNumber(.calendarAccess), title: lm["onboarding.step.calendarAccess.title"]) {
-            switch aggregator.permissionState {
-            case .notDetermined:
-                Text(lm["onboarding.step.calendarAccess.body"])
-                    .stepBody()
-                PrimaryStepButton(title: lm["general.continue"]) {
-                    Task { await aggregator.requestAccess() }
+    private var calendarSourcesStep: some View {
+        StepCard(number: stepNumber(.calendarSources), title: lm["onboarding.step.sources.title"]) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(lm["onboarding.step.sources.appleTitle"])
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.ink)
+                    Spacer()
+                    if aggregator.permissionState == .granted {
+                        Toggle("", isOn: Binding(
+                            get: { settings.appleCalendarEnabled },
+                            set: { newValue in
+                                if newValue && settings.enabledEventKitCalendarIDs == ["__none__"] {
+                                    settings.enabledEventKitCalendarIDs = []
+                                    aggregator.setEnabledEventKitCalendars([])
+                                }
+                                settings.appleCalendarEnabled = newValue
+                                aggregator.setAppleCalendarEnabled(newValue)
+                            }
+                        ))
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .labelsHidden()
+                        .accessibilityLabel(lm["onboarding.step.sources.appleTitle"])
+                    }
                 }
-            case .denied, .restricted:
-                Text(lm["onboarding.step.calendarAccess.denied"])
-                    .font(.system(size: 13))
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button(lm["general.openSystemSettings"]) {
-                    SystemSettingsOpener.openCalendarPrivacy()
+
+                switch aggregator.permissionState {
+                case .notDetermined:
+                    Text(lm["onboarding.step.sources.appleBody"])
+                        .stepBody()
+                    PrimaryStepButton(title: lm["general.continue"]) {
+                        Task { await aggregator.requestAccess() }
+                    }
+                case .denied, .restricted:
+                    Text(lm["onboarding.step.calendarAccess.denied"])
+                        .font(.system(size: 13))
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(lm["general.openSystemSettings"]) {
+                        SystemSettingsOpener.openCalendarPrivacy()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .clickCursor()
+                case .granted:
+                    if settings.appleCalendarEnabled {
+                        StatusBadge(text: lm["onboarding.step.calendarAccess.granted"], systemImage: "checkmark.circle.fill", tint: .green)
+                    } else {
+                        Text(lm["settings.calendars.macos.disabled"])
+                            .stepBody()
+                    }
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .clickCursor()
-            case .granted:
-                StatusBadge(text: lm["onboarding.step.calendarAccess.granted"], systemImage: "checkmark.circle.fill", tint: .green)
+            }
+
+            if aggregator.google.isConfigured || aggregator.graph.isConfigured {
+                Divider()
+                    .padding(.vertical, 4)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(lm["onboarding.step.sources.optionalHeader"])
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Tokens.ink2)
+
+                    if aggregator.google.isConfigured {
+                        GoogleOnboardingRow(google: aggregator.google) {
+                            settings.enabledGoogleCalendarIDs.remove("__none__")
+                            aggregator.setEnabledGoogleCalendars(settings.enabledGoogleCalendarIDs)
+                        }
+                    }
+
+                    if aggregator.graph.isConfigured {
+                        MicrosoftOnboardingRow(graph: aggregator.graph) {
+                            settings.enabledGraphCalendarIDs.remove("__none__")
+                            aggregator.setEnabledGraphCalendars(settings.enabledGraphCalendarIDs)
+                        }
+                    }
+                }
             }
         }
     }
@@ -262,41 +303,101 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 5: Microsoft 365 / Exchange
-
-    /// Lives in its own struct so it can `@ObservedObject` the GraphSource
-    /// directly. Without that observation, sign-in state changes (which
-    /// publish from inside `aggregator.graph`) wouldn't trigger a re-render
-    /// of this step.
-    private struct MicrosoftStep: View {
-        @ObservedObject var graph: GraphSource
-        /// Computed by the parent from the visible-step sequence.
-        let number: Int
+    private struct GoogleOnboardingRow: View {
+        @ObservedObject var google: GoogleSource
+        let onClearEmptySentinel: () -> Void
         @EnvironmentObject private var lm: LocalizationManager
 
         var body: some View {
-            StepCard(number: number, title: lm["onboarding.step.microsoft.title"]) {
-                switch graph.state {
-                case .signedOut:
-                    Text(lm["onboarding.step.microsoft.body"])
-                        .stepBody()
-                    PrimaryStepButton(title: lm["settings.microsoft.connect"]) {
-                        Task { await graph.signIn() }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    Text(lm["onboarding.step.google.title"])
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Tokens.ink)
+                    Spacer()
+                    switch google.state {
+                    case .signedOut:
+                        Button(lm["onboarding.step.google.connect"]) {
+                            onClearEmptySentinel()
+                            Task { await google.signIn() }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .clickCursor()
+                    case .signingIn:
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(lm["onboarding.step.google.connecting"])
+                                .font(.system(size: 12))
+                                .foregroundStyle(Tokens.ink2)
+                        }
+                    case .signedIn:
+                        Button {
+                            Task { await google.signOut() }
+                        } label: {
+                            Text(lm["onboarding.step.google.disconnect"])
+                                .font(.system(size: 12))
+                                .foregroundStyle(Tokens.ink3)
+                                .underline()
+                        }
+                        .buttonStyle(.plain)
+                        .clickCursor()
+                    case .error:
+                        Button(lm["onboarding.step.google.tryAgain"]) {
+                            onClearEmptySentinel()
+                            Task { await google.signIn() }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .clickCursor()
                     }
-                case .signingIn:
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text(lm["onboarding.step.microsoft.connecting"])
-                            .font(.system(size: 13))
-                            .foregroundStyle(Tokens.ink2)
-                    }
-                case .signedIn(let displayName):
-                    VStack(alignment: .leading, spacing: 8) {
-                        StatusBadge(
-                            text: displayName.map { lm.t("onboarding.step.microsoft.connectedAs", $0) } ?? lm["onboarding.step.microsoft.connected"],
-                            systemImage: "checkmark.circle.fill",
-                            tint: .green
-                        )
+                }
+
+                if case .signedIn(let displayName) = google.state {
+                    StatusBadge(
+                        text: displayName.map { lm.t("onboarding.step.google.connectedAs", $0) } ?? lm["onboarding.step.google.connected"],
+                        systemImage: "checkmark.circle.fill",
+                        tint: .green
+                    )
+                } else if case .error(let message) = google.state {
+                    Text(message)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private struct MicrosoftOnboardingRow: View {
+        @ObservedObject var graph: GraphSource
+        let onClearEmptySentinel: () -> Void
+        @EnvironmentObject private var lm: LocalizationManager
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    Text(lm["onboarding.step.microsoft.rowTitle"])
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Tokens.ink)
+                    Spacer()
+                    switch graph.state {
+                    case .signedOut:
+                        Button(lm["settings.microsoft.connect"]) {
+                            onClearEmptySentinel()
+                            Task { await graph.signIn() }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .clickCursor()
+                    case .signingIn:
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(lm["onboarding.step.microsoft.connecting"])
+                                .font(.system(size: 12))
+                                .foregroundStyle(Tokens.ink2)
+                        }
+                    case .signedIn:
                         Button {
                             Task { await graph.signOut() }
                         } label: {
@@ -307,23 +408,34 @@ struct OnboardingView: View {
                         }
                         .buttonStyle(.plain)
                         .clickCursor()
-                    }
-                case .error(let message):
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(message)
-                            .font(.system(size: 12))
-                            .foregroundStyle(.red)
-                            .fixedSize(horizontal: false, vertical: true)
-                        PrimaryStepButton(title: lm["onboarding.step.microsoft.tryAgain"]) {
+                    case .error:
+                        Button(lm["onboarding.step.microsoft.tryAgain"]) {
+                            onClearEmptySentinel()
                             Task { await graph.signIn() }
                         }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .clickCursor()
                     }
+                }
+
+                if case .signedIn(let displayName) = graph.state {
+                    StatusBadge(
+                        text: displayName.map { lm.t("onboarding.step.microsoft.connectedAs", $0) } ?? lm["onboarding.step.microsoft.connected"],
+                        systemImage: "checkmark.circle.fill",
+                        tint: .green
+                    )
+                } else if case .error(let message) = graph.state {
+                    Text(message)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
     }
 
-    // MARK: - Step 6: Calendars
+    // MARK: - Step 5: Calendars
 
     private var calendarsStep: some View {
         StepCard(number: stepNumber(.calendars), title: lm["onboarding.step.calendars.title"]) {
@@ -331,8 +443,8 @@ struct OnboardingView: View {
                 .stepBody()
 
             VStack(alignment: .leading, spacing: 10) {
-                if !aggregator.availableEventKitCalendars.isEmpty {
-                    if aggregator.graph.isConfigured {
+                if settings.appleCalendarEnabled && !aggregator.availableEventKitCalendars.isEmpty {
+                    if aggregator.google.isConfigured || aggregator.graph.isConfigured {
                         SourceLabel(text: lm["onboarding.step.calendars.onThisMac"])
                     }
                     VStack(alignment: .leading, spacing: 6) {
@@ -357,12 +469,58 @@ struct OnboardingView: View {
                     }
                 }
 
-                // Graph calendars only render after sign-in. Anchor the list
-                // on aggregator.graph so SwiftUI re-evaluates this branch
-                // when the user signs in/out during onboarding.
+                GoogleCalendarsList(google: aggregator.google,
+                                    binding: bindingForGoogleCalendar(id:))
+
                 GraphCalendarsList(graph: aggregator.graph,
                                    binding: bindingForGraphCalendar(id:))
             }
+        }
+    }
+
+    private struct GoogleCalendarsList: View {
+        @ObservedObject var google: GoogleSource
+        let binding: (String) -> Binding<Bool>
+
+        var body: some View {
+            if !google.availableCalendars.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    SourceLabel(text: "Google Calendar")
+                    ForEach(google.availableCalendars) { calendar in
+                        Toggle(isOn: binding(calendar.id)) {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(googleColor(calendar.backgroundColor))
+                                    .frame(width: 8, height: 8)
+                                Text(calendar.summaryOverride ?? calendar.summary ?? calendar.id)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Tokens.ink)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text("Google")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Tokens.ink3)
+                            }
+                        }
+                        .toggleStyle(.checkbox)
+                    }
+                }
+            }
+        }
+
+        private func googleColor(_ hex: String?) -> Color {
+            guard var hex = hex else {
+                return Color(.sRGB, red: 66/255, green: 133/255, blue: 244/255, opacity: 1)
+            }
+            if hex.hasPrefix("#") { hex.removeFirst() }
+            guard hex.count == 6, let value = UInt32(hex, radix: 16) else {
+                return Color(.sRGB, red: 66/255, green: 133/255, blue: 244/255, opacity: 1)
+            }
+            return Color(
+                red: Double((value >> 16) & 0xFF) / 255,
+                green: Double((value >> 8) & 0xFF) / 255,
+                blue: Double(value & 0xFF) / 255
+            )
         }
     }
 
@@ -477,30 +635,17 @@ struct OnboardingView: View {
     }
 
     private var footerHint: String {
-        // Exchange/Microsoft 365 users who signed in via Graph don't need
-        // local Calendar.app access at all — don't block them on a
-        // permission they may never grant.
-        if isGraphSignedIn { return lm["onboarding.footer.changeInPrefs"] }
+        if aggregator.hasAnyActiveSource { return lm["onboarding.footer.changeInPrefs"] }
         switch aggregator.permissionState {
-        // Numbered from the visible steps: language and theme come first, so
-        // a hardcoded "step 1" pointed at the wrong card.
-        case .notDetermined:  return lm.t("onboarding.footer.calendarStepRequired", stepNumber(.calendarAccess))
-        case .denied, .restricted: return lm["onboarding.footer.accessDenied"]
-        case .granted:        return lm["onboarding.footer.changeInPrefs"]
+        case .notDetermined, .granted:
+            return lm.t("onboarding.footer.sourcesStepRequired", stepNumber(.calendarSources))
+        case .denied, .restricted:
+            return lm["onboarding.footer.accessDenied"]
         }
     }
 
-    /// Get Started is enabled once the user has SOME way to see meetings:
-    /// local Calendar.app access, or a signed-in Microsoft 365/Exchange
-    /// account. Blocking purely on EventKit permission stranded
-    /// Exchange-only users who never touch Calendar.app.
     private var canFinishOnboarding: Bool {
-        aggregator.permissionState == .granted || isGraphSignedIn
-    }
-
-    private var isGraphSignedIn: Bool {
-        if case .signedIn = aggregator.graph.state { return true }
-        return false
+        aggregator.hasAnyActiveSource
     }
 
     // MARK: - Actions / helpers
@@ -511,43 +656,59 @@ struct OnboardingView: View {
     }
 
     private func bindingForEventKitCalendar(id: String) -> Binding<Bool> {
-        Binding(
-            get: {
-                settings.enabledEventKitCalendarIDs.isEmpty ||
-                settings.enabledEventKitCalendarIDs.contains(id)
-            },
-            set: { newValue in
-                if settings.enabledEventKitCalendarIDs.isEmpty {
-                    let all = aggregator.availableEventKitCalendars.map(\.calendarIdentifier)
-                    settings.enabledEventKitCalendarIDs = Set(all)
-                }
-                if newValue {
-                    settings.enabledEventKitCalendarIDs.insert(id)
-                } else {
-                    settings.enabledEventKitCalendarIDs.remove(id)
-                }
-                aggregator.setEnabledEventKitCalendars(settings.enabledEventKitCalendarIDs)
-            }
+        calendarBinding(
+            id: id,
+            keyPath: \.enabledEventKitCalendarIDs,
+            allIDs: { aggregator.availableEventKitCalendars.map(\.calendarIdentifier) },
+            apply: aggregator.setEnabledEventKitCalendars
         )
     }
 
     private func bindingForGraphCalendar(id: String) -> Binding<Bool> {
+        calendarBinding(
+            id: id,
+            keyPath: \.enabledGraphCalendarIDs,
+            allIDs: { aggregator.graph.availableCalendars.map(\.id) },
+            apply: aggregator.setEnabledGraphCalendars
+        )
+    }
+
+    private func bindingForGoogleCalendar(id: String) -> Binding<Bool> {
+        calendarBinding(
+            id: id,
+            keyPath: \.enabledGoogleCalendarIDs,
+            allIDs: { aggregator.google.availableCalendars.map(\.id) },
+            apply: aggregator.setEnabledGoogleCalendars
+        )
+    }
+
+    private func calendarBinding(
+        id: String,
+        keyPath: ReferenceWritableKeyPath<AppSettings, Set<String>>,
+        allIDs: @escaping () -> [String],
+        apply: @escaping (Set<String>) -> Void
+    ) -> Binding<Bool> {
         Binding(
             get: {
-                settings.enabledGraphCalendarIDs.isEmpty ||
-                settings.enabledGraphCalendarIDs.contains(id)
+                let current = settings[keyPath: keyPath]
+                return current.isEmpty || current.contains(id)
             },
             set: { newValue in
-                if settings.enabledGraphCalendarIDs.isEmpty {
-                    let all = aggregator.graph.availableCalendars.map(\.id)
-                    settings.enabledGraphCalendarIDs = Set(all)
+                var updated = settings[keyPath: keyPath]
+                if updated.isEmpty {
+                    updated = Set(allIDs())
                 }
                 if newValue {
-                    settings.enabledGraphCalendarIDs.insert(id)
+                    updated.remove("__none__")
+                    updated.insert(id)
                 } else {
-                    settings.enabledGraphCalendarIDs.remove(id)
+                    updated.remove(id)
+                    if updated.isEmpty {
+                        updated = ["__none__"]
+                    }
                 }
-                aggregator.setEnabledGraphCalendars(settings.enabledGraphCalendarIDs)
+                settings[keyPath: keyPath] = updated
+                apply(updated)
             }
         )
     }

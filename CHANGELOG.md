@@ -5,6 +5,14 @@ All notable user-facing changes to Slapss.
 This file is the source of truth for release notes. The public web changelog and
 GitHub Releases are generated from it.
 
+## v2.4.0 — November 23, 2026
+
+- **New:** Connect your **Google Calendar** account directly inside Slapss with read-only OAuth, no macOS Calendar.app setup required. Tokens stay in your Mac's Keychain.
+- **New:** Automatic deduplication across calendar sources. If your Google or Microsoft account is also synced in Apple Calendar, matching meetings appear once and alert once while keeping "Open in Calendar".
+- **New:** Switch **Apple Calendar** off or back on from Preferences → Calendars (or during onboarding) without changing macOS privacy permissions.
+- **Improved:** Onboarding now combines Apple Calendar, Google Calendar, and Microsoft 365 in a single **Calendar sources** step and lets Google-only and Microsoft-only users pick which calendars to watch.
+- **Improved:** Google Meet links from a directly connected Google Calendar automatically open with your signed-in account (`authuser`), and "Open in Calendar" falls back to the event's Google/Outlook web link when there is no local Calendar.app match.
+
 ## v2.3.0 — November 4, 2026
 
 - New: you can hide a meeting from the menu bar once it has started, right away or after 5, 10 or 15 minutes. Find it in Settings under Menu bar. By default nothing changes.

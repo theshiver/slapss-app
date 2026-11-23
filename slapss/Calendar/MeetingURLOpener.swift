@@ -23,7 +23,7 @@ enum MeetingURLOpener {
     ///   calendar, if the user configured one. When set and the URL is a
     ///   `meet.google.com` link, `?authuser=N` is applied so the meeting opens
     ///   in the matching Google account. Ignored for non-Meet URLs.
-    static func open(_ url: URL, authUser: Int? = nil) {
+    static func open(_ url: URL, authUser: String? = nil) {
         let target = applyAuthUserIfNeeded(url, authUser: authUser)
         let urlString = target.absoluteString
 
@@ -55,14 +55,14 @@ enum MeetingURLOpener {
     /// links. Leaves every other URL untouched. Replacing rather than blindly
     /// appending guards against a meeting link that already carries an
     /// `authuser` value.
-    private static func applyAuthUserIfNeeded(_ url: URL, authUser: Int?) -> URL {
-        guard let authUser,
+    private static func applyAuthUserIfNeeded(_ url: URL, authUser: String?) -> URL {
+        guard let authUser, !authUser.isEmpty,
               let host = url.host, host.contains("meet.google.com"),
               var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         else { return url }
 
         var items = (components.queryItems ?? []).filter { $0.name != "authuser" }
-        items.append(URLQueryItem(name: "authuser", value: String(authUser)))
+        items.append(URLQueryItem(name: "authuser", value: authUser))
         components.queryItems = items
         return components.url ?? url
     }

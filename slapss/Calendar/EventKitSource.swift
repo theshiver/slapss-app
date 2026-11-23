@@ -275,7 +275,8 @@ final class EventKitSource {
             calendarID: ek.calendar.calendarIdentifier,
             source: .eventKit,
             attendees: attendees,
-            rsvp: rsvp(for: ek)
+            rsvp: rsvp(for: ek),
+            iCalUID: ek.calendarItemExternalIdentifier
         )
     }
 

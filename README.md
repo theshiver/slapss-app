@@ -57,8 +57,10 @@ button to join.
 ## Works with your calendar
 
 Anything in macOS Calendar: **iCloud, Google Calendar, Outlook and Exchange**.
-Work calendar on **Microsoft 365**? Sign in right inside Slapss, no Calendar.app
-setup needed. Guides for [Outlook](https://slapss-app.com/outlook-meeting-reminder-mac)
+Don't use Apple Calendar? Sign in directly to **Google Calendar** or **Microsoft 365**
+inside Slapss, no Calendar.app setup needed. If an account is connected in both places,
+Slapss deduplicates events automatically so you never get double alerts. Guides for
+[Outlook](https://slapss-app.com/outlook-meeting-reminder-mac)
 and [Google Calendar](https://slapss-app.com/google-calendar-reminder-mac).
 
 ## Who it's for
@@ -71,8 +73,9 @@ notifications keep slipping past you, Slapss is the one you can't scroll past.
 ## Private by design
 
 There is no Slapss server. Your calendar is read on your Mac and sent nowhere. No
-analytics, no crash reporting, no accounts. Microsoft 365 events come straight from
-Microsoft with a read-only permission, and the sign-in stays in your keychain.
+analytics, no crash reporting, no accounts. Direct Google Calendar and Microsoft 365
+events come straight from Google and Microsoft with read-only permissions, and the
+sign-in tokens stay in your keychain.
 
 You don't have to take that on faith: the code is right here.
 [DEVELOPMENT.md](DEVELOPMENT.md#privacy-details) shows exactly what the app touches

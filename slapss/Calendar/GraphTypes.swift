@@ -36,6 +36,7 @@ enum GraphTypes {
 
     struct Event: Decodable {
         let id: String
+        let iCalUId: String?
         let subject: String?
         let start: DateTimeTimeZone
         let end: DateTimeTimeZone

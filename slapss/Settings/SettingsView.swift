@@ -377,7 +377,29 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 16) {
                 eventKitSection
                 Divider()
-                microsoftSection
+                GoogleSettingsSection(
+                    google: aggregator.google,
+                    binding: bindingForGoogle(id:),
+                    onClearEmptySentinel: {
+                        if settings.enabledGoogleCalendarIDs == ["__none__"] {
+                            settings.enabledGoogleCalendarIDs = []
+                            aggregator.setEnabledGoogleCalendars([])
+                        }
+                    }
+                )
+                Divider()
+                MicrosoftSettingsSection(
+                    graph: aggregator.graph,
+                    binding: bindingForGraph(id:),
+                    onClearEmptySentinel: {
+                        if settings.enabledGraphCalendarIDs == ["__none__"] {
+                            settings.enabledGraphCalendarIDs = []
+                            aggregator.setEnabledGraphCalendars([])
+                        }
+                    },
+                    onEmailAdmin: openAdminEmailDraft,
+                    onCopyAdminLink: copyAdminConsentURL
+                )
             }
             .padding()
         }
@@ -388,8 +410,27 @@ struct SettingsView: View {
         let pickerCalendarIDs = googleAuthUserCalendarIDs(in: calendars)
 
         return VStack(alignment: .leading, spacing: 8) {
-            Text(lm["settings.calendars.macos.title"])
-                .font(.headline)
+            HStack {
+                Text(lm["settings.calendars.macos.title"])
+                    .font(.headline)
+                Spacer()
+                if aggregator.permissionState == .granted {
+                    Toggle("", isOn: Binding(
+                        get: { settings.appleCalendarEnabled },
+                        set: { newValue in
+                            if newValue && settings.enabledEventKitCalendarIDs == ["__none__"] {
+                                settings.enabledEventKitCalendarIDs = []
+                                aggregator.setEnabledEventKitCalendars([])
+                            }
+                            settings.appleCalendarEnabled = newValue
+                            aggregator.setAppleCalendarEnabled(newValue)
+                        }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityLabel(lm["settings.calendars.macos.title"])
+                }
+            }
             Text(lm["settings.calendars.macos.description"])
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -417,49 +458,54 @@ struct SettingsView: View {
                 }
                 .controlSize(.small)
             case .granted:
-                EmptyView()
-            }
+                if !settings.appleCalendarEnabled {
+                    Text(lm["settings.calendars.macos.disabled"])
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    ForEach(calendars, id: \.calendarIdentifier) { calendar in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Toggle(isOn: bindingForEventKit(id: calendar.calendarIdentifier)) {
+                                HStack {
+                                    Circle()
+                                        .fill(Color(cgColor: calendar.cgColor))
+                                        .frame(width: 10, height: 10)
+                                    Text(calendar.title)
+                                    Spacer()
+                                    Text(calendar.source.title)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .toggleStyle(.checkbox)
 
-            ForEach(calendars, id: \.calendarIdentifier) { calendar in
-                VStack(alignment: .leading, spacing: 2) {
-                    Toggle(isOn: bindingForEventKit(id: calendar.calendarIdentifier)) {
-                        HStack {
-                            Circle()
-                                .fill(Color(cgColor: calendar.cgColor))
-                                .frame(width: 10, height: 10)
-                            Text(calendar.title)
-                            Spacer()
-                            Text(calendar.source.title)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .toggleStyle(.checkbox)
-
-                    if settings.enableGoogleAuthUser,
-                       pickerCalendarIDs.contains(calendar.calendarIdentifier) {
-                        Picker(
-                            lm["settings.calendars.openMeetAs"],
-                            selection: authUserBinding(id: calendar.calendarIdentifier)
-                        ) {
-                            Text(lm["settings.calendars.defaultAccount"]).tag(-1)
-                            ForEach(0..<5) { index in
-                                Text(lm.t("settings.calendars.account", index, index)).tag(index)
+                            if settings.enableGoogleAuthUser,
+                               pickerCalendarIDs.contains(calendar.calendarIdentifier) {
+                                Picker(
+                                    lm["settings.calendars.openMeetAs"],
+                                    selection: authUserBinding(id: calendar.calendarIdentifier)
+                                ) {
+                                    Text(lm["settings.calendars.defaultAccount"]).tag(-1)
+                                    ForEach(0..<5) { index in
+                                        Text(lm.t("settings.calendars.account", index, index)).tag(index)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .controlSize(.small)
+                                .padding(.leading, 18)
                             }
                         }
-                        .pickerStyle(.menu)
-                        .controlSize(.small)
-                        .padding(.leading, 18)
+                    }
+
+                    if settings.enableGoogleAuthUser {
+                        Text(lm["settings.calendars.authUserHint"])
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 2)
                     }
                 }
-            }
-
-            if settings.enableGoogleAuthUser {
-                Text(lm["settings.calendars.authUserHint"])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
             }
         }
     }
@@ -509,84 +555,6 @@ struct SettingsView: View {
         )
     }
 
-    private var microsoftSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(lm["settings.microsoft.title"])
-                    .font(.headline)
-                Spacer()
-                graphActionButton
-            }
-
-            switch aggregator.graph.state {
-            case .signedOut:
-                Text(lm["settings.microsoft.description"])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                adminHelpDisclosure
-
-            case .signingIn:
-                ProgressView(lm["settings.microsoft.signingIn"])
-                    .controlSize(.small)
-
-            case .signedIn(let displayName):
-                if let displayName {
-                    Text(lm.t("settings.microsoft.signedInAs", displayName))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(aggregator.graph.availableCalendars) { calendar in
-                    Toggle(isOn: bindingForGraph(id: calendar.id)) {
-                        HStack {
-                            Circle()
-                                .fill(graphCalendarColor(calendar))
-                                .frame(width: 10, height: 10)
-                            Text(calendar.name)
-                            if calendar.isDefaultCalendar == true {
-                                Text(lm["settings.microsoft.default"])
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .toggleStyle(.checkbox)
-                }
-
-            case .error(let message):
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-                adminHelpDisclosure
-            }
-        }
-    }
-
-    // MARK: - IT admin approval helper
-
-    /// Some tenants block users from consenting to third-party apps and require
-    /// the IT admin to pre-approve the app. Surface this case directly so users
-    /// don't get stuck — they can fire off a templated email to their admin or
-    /// copy a one-click admin-consent URL.
-    private var adminHelpDisclosure: some View {
-        DisclosureGroup(lm["settings.microsoft.adminHelp"]) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(lm["settings.microsoft.adminDescription"])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: 8) {
-                    Button(lm["settings.microsoft.emailAdmin"]) { openAdminEmailDraft() }
-                    Button(lm["settings.microsoft.copyLink"]) { copyAdminConsentURL() }
-                }
-                .controlSize(.small)
-            }
-            .padding(.top, 4)
-        }
-        .font(.callout)
-    }
-
     private func adminConsentURL() -> URL? {
         URL(string: "https://login.microsoftonline.com/organizations/adminconsent?client_id=\(MSALConfig.clientID)")
     }
@@ -629,39 +597,6 @@ struct SettingsView: View {
         NSPasteboard.general.setString(url.absoluteString, forType: .string)
     }
 
-    @ViewBuilder
-    private var graphActionButton: some View {
-        switch aggregator.graph.state {
-        case .signedOut, .error:
-            Button(lm["settings.microsoft.connect"]) {
-                Task { await aggregator.graph.signIn() }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .disabled(!aggregator.graph.isConfigured)
-
-        case .signingIn:
-            EmptyView()
-
-        case .signedIn:
-            Button(lm["settings.microsoft.signOut"]) {
-                Task { await aggregator.graph.signOut() }
-            }
-            .controlSize(.small)
-        }
-    }
-
-    private func graphCalendarColor(_ calendar: GraphTypes.Calendar) -> Color {
-        guard var hex = calendar.hexColor else { return .secondary }
-        if hex.hasPrefix("#") { hex.removeFirst() }
-        guard hex.count == 6, let value = UInt32(hex, radix: 16) else { return .secondary }
-        return Color(
-            red: Double((value >> 16) & 0xFF) / 255,
-            green: Double((value >> 8) & 0xFF) / 255,
-            blue: Double(value & 0xFF) / 255
-        )
-    }
-
     private func bindingForEventKit(id: String) -> Binding<Bool> {
         Binding(
             get: {
@@ -677,6 +612,11 @@ struct SettingsView: View {
                     settings.enabledEventKitCalendarIDs.insert(id)
                 } else {
                     settings.enabledEventKitCalendarIDs.remove(id)
+                    if settings.enabledEventKitCalendarIDs.isEmpty {
+                        settings.appleCalendarEnabled = false
+                        aggregator.setAppleCalendarEnabled(false)
+                        return
+                    }
                 }
                 aggregator.setEnabledEventKitCalendars(settings.enabledEventKitCalendarIDs)
             }
@@ -684,24 +624,252 @@ struct SettingsView: View {
     }
 
     private func bindingForGraph(id: String) -> Binding<Bool> {
+        calendarBinding(
+            id: id,
+            keyPath: \.enabledGraphCalendarIDs,
+            allIDs: { aggregator.graph.availableCalendars.map(\.id) },
+            apply: aggregator.setEnabledGraphCalendars
+        )
+    }
+
+    private func bindingForGoogle(id: String) -> Binding<Bool> {
+        calendarBinding(
+            id: id,
+            keyPath: \.enabledGoogleCalendarIDs,
+            allIDs: { aggregator.google.availableCalendars.map(\.id) },
+            apply: aggregator.setEnabledGoogleCalendars
+        )
+    }
+
+    private func calendarBinding(
+        id: String,
+        keyPath: ReferenceWritableKeyPath<AppSettings, Set<String>>,
+        allIDs: @escaping () -> [String],
+        apply: @escaping (Set<String>) -> Void
+    ) -> Binding<Bool> {
         Binding(
             get: {
-                settings.enabledGraphCalendarIDs.isEmpty ||
-                settings.enabledGraphCalendarIDs.contains(id)
+                let current = settings[keyPath: keyPath]
+                return current.isEmpty || current.contains(id)
             },
             set: { newValue in
-                if settings.enabledGraphCalendarIDs.isEmpty {
-                    let all = aggregator.graph.availableCalendars.map(\.id)
-                    settings.enabledGraphCalendarIDs = Set(all)
+                var updated = settings[keyPath: keyPath]
+                if updated.isEmpty {
+                    updated = Set(allIDs())
                 }
                 if newValue {
-                    settings.enabledGraphCalendarIDs.insert(id)
+                    updated.remove("__none__")
+                    updated.insert(id)
                 } else {
-                    settings.enabledGraphCalendarIDs.remove(id)
+                    updated.remove(id)
+                    if updated.isEmpty {
+                        updated = ["__none__"]
+                    }
                 }
-                aggregator.setEnabledGraphCalendars(settings.enabledGraphCalendarIDs)
+                settings[keyPath: keyPath] = updated
+                apply(updated)
             }
         )
+    }
+}
+
+private func calendarColorFromHex(_ hex: String?) -> Color {
+    guard var hex else { return .secondary }
+    if hex.hasPrefix("#") { hex.removeFirst() }
+    guard hex.count == 6, let value = UInt32(hex, radix: 16) else { return .secondary }
+    return Color(
+        red: Double((value >> 16) & 0xFF) / 255,
+        green: Double((value >> 8) & 0xFF) / 255,
+        blue: Double(value & 0xFF) / 255
+    )
+}
+
+private struct GoogleSettingsSection: View {
+    @ObservedObject var google: GoogleSource
+    let binding: (String) -> Binding<Bool>
+    let onClearEmptySentinel: () -> Void
+    @EnvironmentObject private var lm: LocalizationManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(lm["settings.google.title"])
+                    .font(.headline)
+                Spacer()
+                actionButton
+            }
+
+            switch google.state {
+            case .signedOut:
+                Text(lm["settings.google.description"])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+            case .signingIn:
+                ProgressView(lm["settings.google.signingIn"])
+                    .controlSize(.small)
+
+            case .signedIn(let displayName):
+                if let displayName {
+                    Text(lm.t("settings.google.signedInAs", displayName))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(google.availableCalendars) { calendar in
+                    Toggle(isOn: binding(calendar.id)) {
+                        HStack {
+                            Circle()
+                                .fill(calendarColorFromHex(calendar.backgroundColor))
+                                .frame(width: 10, height: 10)
+                            Text(calendar.summaryOverride ?? calendar.summary ?? calendar.id)
+                            if calendar.primary == true {
+                                Text(lm["settings.google.primary"])
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .toggleStyle(.checkbox)
+                }
+
+            case .error(let message):
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actionButton: some View {
+        switch google.state {
+        case .signedOut, .error:
+            Button(lm["settings.google.connect"]) {
+                onClearEmptySentinel()
+                Task { await google.signIn() }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(!google.isConfigured)
+
+        case .signingIn:
+            EmptyView()
+
+        case .signedIn:
+            Button(lm["settings.google.signOut"]) {
+                onClearEmptySentinel()
+                Task { await google.signOut() }
+            }
+            .controlSize(.small)
+        }
+    }
+}
+
+private struct MicrosoftSettingsSection: View {
+    @ObservedObject var graph: GraphSource
+    let binding: (String) -> Binding<Bool>
+    let onClearEmptySentinel: () -> Void
+    let onEmailAdmin: () -> Void
+    let onCopyAdminLink: () -> Void
+    @EnvironmentObject private var lm: LocalizationManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(lm["settings.microsoft.title"])
+                    .font(.headline)
+                Spacer()
+                actionButton
+            }
+
+            switch graph.state {
+            case .signedOut:
+                Text(lm["settings.microsoft.description"])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                adminHelpDisclosure
+
+            case .signingIn:
+                ProgressView(lm["settings.microsoft.signingIn"])
+                    .controlSize(.small)
+
+            case .signedIn(let displayName):
+                if let displayName {
+                    Text(lm.t("settings.microsoft.signedInAs", displayName))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(graph.availableCalendars) { calendar in
+                    Toggle(isOn: binding(calendar.id)) {
+                        HStack {
+                            Circle()
+                                .fill(calendarColorFromHex(calendar.hexColor))
+                                .frame(width: 10, height: 10)
+                            Text(calendar.name)
+                            if calendar.isDefaultCalendar == true {
+                                Text(lm["settings.microsoft.default"])
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .toggleStyle(.checkbox)
+                }
+
+            case .error(let message):
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                adminHelpDisclosure
+            }
+        }
+    }
+
+    private var adminHelpDisclosure: some View {
+        DisclosureGroup(lm["settings.microsoft.adminHelp"]) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(lm["settings.microsoft.adminDescription"])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    Button(lm["settings.microsoft.emailAdmin"]) { onEmailAdmin() }
+                    Button(lm["settings.microsoft.copyLink"]) { onCopyAdminLink() }
+                }
+                .controlSize(.small)
+            }
+            .padding(.top, 4)
+        }
+        .font(.callout)
+    }
+
+    @ViewBuilder
+    private var actionButton: some View {
+        switch graph.state {
+        case .signedOut, .error:
+            Button(lm["settings.microsoft.connect"]) {
+                onClearEmptySentinel()
+                Task { await graph.signIn() }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(!graph.isConfigured)
+
+        case .signingIn:
+            EmptyView()
+
+        case .signedIn:
+            Button(lm["settings.microsoft.signOut"]) {
+                onClearEmptySentinel()
+                Task { await graph.signOut() }
+            }
+            .controlSize(.small)
+        }
     }
 }
 

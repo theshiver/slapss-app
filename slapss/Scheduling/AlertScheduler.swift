@@ -560,7 +560,7 @@ final class AlertScheduler: ObservableObject {
 
     func handleJoin(_ meeting: MeetingEvent) {
         if let url = meeting.joinURL {
-            let authUser = settings?.authUser(forCalendarID: meeting.calendarID)
+            let authUser = settings?.authUserValue(for: meeting)
             MeetingURLOpener.open(url, authUser: authUser)
             ReviewPrompt.recordJoin()
         }

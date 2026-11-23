@@ -170,7 +170,7 @@ final class GraphSource: ObservableObject {
             URLQueryItem(name: "startDateTime", value: start),
             URLQueryItem(name: "endDateTime", value: end),
             URLQueryItem(name: "$top", value: "100"),
-            URLQueryItem(name: "$select", value: "id,subject,start,end,location,bodyPreview,onlineMeeting,webLink,isAllDay,isCancelled,attendees,responseStatus"),
+            URLQueryItem(name: "$select", value: "id,iCalUId,subject,start,end,location,bodyPreview,onlineMeeting,webLink,isAllDay,isCancelled,attendees,responseStatus"),
             URLQueryItem(name: "$orderby", value: "start/dateTime"),
         ]
         return components?.url
@@ -213,7 +213,9 @@ final class GraphSource: ObservableObject {
             calendarColor: parseHex(calendar.hexColor),
             source: .graph,
             attendees: attendees,
-            rsvp: Self.rsvp(from: event.responseStatus?.response)
+            rsvp: Self.rsvp(from: event.responseStatus?.response),
+            iCalUID: event.iCalUId,
+            calendarWebURL: event.webLink.flatMap(URL.init(string:))
         )
     }
 

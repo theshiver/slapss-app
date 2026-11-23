@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<!-- App Store Connect export-compliance bypass.
-	     Slapss only uses HTTPS (Microsoft Graph, MSAL OAuth) and standard
+	     Slapss only uses HTTPS (Microsoft Graph, Google Calendar, OAuth) and standard
 	     Apple authentication crypto. Both are exempt under the U.S. EAR
 	     encryption export rules, so we declare false here and avoid the
 	     "Missing Compliance" prompt on every TestFlight / App Store build.
@@ -20,6 +20,16 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>msauth.com.cancetin.slapss</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.cancetin.slapss.googleauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.924616979013-8o4hcrb87ls5f3gbrr0evdclu65rik86</string>
 			</array>
 		</dict>
 	</array>

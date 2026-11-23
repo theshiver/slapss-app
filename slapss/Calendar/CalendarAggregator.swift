@@ -21,6 +21,7 @@ final class CalendarAggregator: ObservableObject {
     }
 
     private var remindersEnabled = true
+    private var appleCalendarEnabled = true
     @Published private(set) var permissionState: PermissionState = .notDetermined
     /// Reminders authorization is tracked separately because macOS treats
     /// it as a distinct privacy scope from calendars.
@@ -42,6 +43,11 @@ final class CalendarAggregator: ObservableObject {
     /// for its permission gate, so publish it from here rather than spreading
     /// that workaround further.
     @Published private(set) var isGraphSignedIn = false
+    @Published private(set) var isGoogleSignedIn = false
+
+    var hasAnyActiveSource: Bool {
+        (appleCalendarEnabled && permissionState == .granted) || isGraphSignedIn || isGoogleSignedIn
+    }
 
     private struct EventKitCalendarFingerprint: Equatable {
         let identifier: String
@@ -53,6 +59,7 @@ final class CalendarAggregator: ObservableObject {
 
     private let eventKit = EventKitSource()
     let graph = GraphSource()
+    let google = GoogleSource()
 
     private var refreshTimer: Timer?
     private var eventKitCalendarFingerprint: [EventKitCalendarFingerprint] = []
@@ -82,6 +89,9 @@ final class CalendarAggregator: ObservableObject {
         graph.onChange = { [weak self] in
             self?.refresh()
         }
+        google.onChange = { [weak self] in
+            self?.refresh()
+        }
         // Observed rather than folded into `onChange` above: that callback only
         // fires on completed sign-in and on sign-out, so a token failure
         // (`.error`) would leave the flag stuck at `true`.
@@ -92,6 +102,13 @@ final class CalendarAggregator: ObservableObject {
             }
             .removeDuplicates()
             .assign(to: &$isGraphSignedIn)
+        google.$state
+            .map { state in
+                if case .signedIn = state { return true }
+                return false
+            }
+            .removeDuplicates()
+            .assign(to: &$isGoogleSignedIn)
     }
 
     deinit {
@@ -113,6 +130,8 @@ final class CalendarAggregator: ObservableObject {
     func start(
         enabledEventKitCalendars: Set<String> = [],
         enabledGraphCalendars: Set<String> = [],
+        enabledGoogleCalendars: Set<String> = [],
+        appleCalendarEnabled: Bool = true,
         remindersEnabled: Bool = true
     ) async {
         guard !didStart else { return }
@@ -126,6 +145,8 @@ final class CalendarAggregator: ObservableObject {
         #endif
         eventKit.enabledCalendarIdentifiers = enabledEventKitCalendars
         graph.enabledCalendarIDs = enabledGraphCalendars
+        google.enabledCalendarIDs = enabledGoogleCalendars
+        self.appleCalendarEnabled = appleCalendarEnabled
         self.remindersEnabled = remindersEnabled
         setPermissionStateIfChanged(mapAccessState(eventKit.accessState))
         setReminderPermissionStateIfChanged(mapAccessState(eventKit.reminderAccessState))
@@ -133,13 +154,17 @@ final class CalendarAggregator: ObservableObject {
         // never called this run — so the `EKEventStoreChanged` observer was
         // never wired up. Make sure it is, otherwise live updates (added
         // calendars, new reminders) only show up via the 30s safety-net poll.
-        if permissionState == .granted || reminderPermissionState == .granted {
+        if (appleCalendarEnabled && permissionState == .granted) || reminderPermissionState == .granted {
             eventKit.ensureChangeObserver()
         }
         if permissionState == .granted {
             syncEventKitCalendarCatalog()
+            if appleCalendarEnabled {
+                startRefreshTimer()
+            }
+        }
+        if hasAnyActiveSource || (remindersEnabled && reminderPermissionState == .granted) {
             refresh()
-            startRefreshTimer()
         }
     }
 
@@ -148,8 +173,10 @@ final class CalendarAggregator: ObservableObject {
         setPermissionStateIfChanged(mapAccessState(state))
         if permissionState == .granted {
             syncEventKitCalendarCatalog()
-            refresh()
-            startRefreshTimer()
+            if appleCalendarEnabled {
+                refresh()
+                startRefreshTimer()
+            }
         }
     }
 
@@ -185,7 +212,7 @@ final class CalendarAggregator: ObservableObject {
         let wasGranted = permissionState == .granted
         syncEventKitStateAndCatalog()
 
-        if permissionState == .granted {
+        if permissionState == .granted && appleCalendarEnabled {
             eventKit.ensureChangeObserver()
             if refreshTimer == nil {
                 startRefreshTimer()
@@ -193,8 +220,6 @@ final class CalendarAggregator: ObservableObject {
             refresh()
         } else if wasGranted {
             stopRefreshTimer()
-            // Remove stale EventKit events after access is revoked. The full
-            // refresh preserves any independently available Graph events.
             refresh()
         }
     }
@@ -233,9 +258,26 @@ final class CalendarAggregator: ObservableObject {
         refresh()
     }
 
-    /// Update the set of Graph calendars to monitor.
     func setEnabledGraphCalendars(_ identifiers: Set<String>) {
         graph.enabledCalendarIDs = identifiers
+        refresh()
+    }
+
+    func setEnabledGoogleCalendars(_ identifiers: Set<String>) {
+        google.enabledCalendarIDs = identifiers
+        refresh()
+    }
+
+    func setAppleCalendarEnabled(_ enabled: Bool) {
+        appleCalendarEnabled = enabled
+        if enabled && permissionState == .granted {
+            eventKit.ensureChangeObserver()
+            if refreshTimer == nil {
+                startRefreshTimer()
+            }
+        } else if !enabled {
+            stopRefreshTimer()
+        }
         refresh()
     }
 
@@ -281,39 +323,31 @@ final class CalendarAggregator: ObservableObject {
         refreshTask?.cancel()
         refreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            let ek = self.permissionState == .granted
+            let ek = (self.appleCalendarEnabled && self.permissionState == .granted)
                 ? self.eventKit.fetchTodayAndAhead(horizon: 24 * 3600)
                 : []
             guard !Task.isCancelled else { return }
-            let graphEvents = await self.graph.fetchTodayAndAhead(horizon: 24 * 3600)
+            async let graphFetch = self.graph.fetchTodayAndAhead(horizon: 24 * 3600)
+            async let googleFetch = self.google.fetchTodayAndAhead(horizon: 24 * 3600)
+            let (graphEvents, googleEvents) = await (graphFetch, googleFetch)
             guard !Task.isCancelled else { return }
             let reminders = self.remindersEnabled && self.reminderPermissionState == .granted
                 ? await self.eventKit.fetchTodayReminders()
                 : []
             guard !Task.isCancelled else { return }
-            let merged = (ek + graphEvents + reminders).sorted { $0.startDate < $1.startDate }
+            let deduped = self.deduplicate(eventKit: ek, graph: graphEvents, google: googleEvents)
+            let merged = (deduped + reminders).sorted { $0.startDate < $1.startDate }
             self.publishSplit(merged: merged)
         }
     }
 
-    /// Fast tick path — refreshes EventKit only and reuses the last batch of
-    /// Graph events. EventKit's own `EKEventStoreChanged` notification is the
-    /// real-time trigger for newly-added events; this poll exists purely as a
-    /// safety net (e.g. clock drift, missed notifications) and to keep the
-    /// "in-progress" flag fresh as a meeting begins/ends.
-    ///
-    /// CRITICAL: only reassigns published arrays when their contents actually
-    /// changed. A bare reassignment fires `objectWillChange`, which makes
-    /// `AlertScheduler.reschedule` re-cancel and re-schedule UN notifications
-    /// for every meeting on every tick — that ran ~12 times per minute and
-    /// was the dominant CPU drain in v1.
     private func refreshEventKitOnly() {
         #if DEBUG
         if DemoMode.isDataActive { publishSplit(merged: DemoMode.meetings); return }
         #endif
         let wasGranted = permissionState == .granted
         syncEventKitStateAndCatalog()
-        guard permissionState == .granted else {
+        guard permissionState == .granted, appleCalendarEnabled else {
             stopRefreshTimer()
             if wasGranted {
                 refresh()
@@ -330,14 +364,112 @@ final class CalendarAggregator: ObservableObject {
             guard let self else { return }
             let ek = self.eventKit.fetchTodayAndAhead(horizon: 24 * 3600)
             guard !Task.isCancelled else { return }
-            let cachedGraph = (self.upcomingMeetings + self.pastMeetingsToday).filter { $0.source == .graph }
+            let cachedAll = self.upcomingMeetings + self.pastMeetingsToday
+            let cachedGraph = cachedAll
+                .filter { $0.source == .graph }
+                .map { event -> MeetingEvent in
+                    var copy = event
+                    copy.matchedEventKitIdentifier = nil
+                    return copy
+                }
+            let cachedGoogle = cachedAll
+                .filter { $0.source == .google }
+                .map { event -> MeetingEvent in
+                    var copy = event
+                    copy.matchedEventKitIdentifier = nil
+                    return copy
+                }
             let reminders = self.remindersEnabled && self.reminderPermissionState == .granted
                 ? await self.eventKit.fetchTodayReminders()
                 : []
             guard !Task.isCancelled else { return }
-            let merged = (ek + cachedGraph + reminders).sorted { $0.startDate < $1.startDate }
+            let deduped = self.deduplicate(eventKit: ek, graph: cachedGraph, google: cachedGoogle)
+            let merged = (deduped + reminders).sorted { $0.startDate < $1.startDate }
             self.publishSplit(merged: merged)
         }
+    }
+
+    private func deduplicate(
+        eventKit: [MeetingEvent],
+        graph: [MeetingEvent],
+        google: [MeetingEvent]
+    ) -> [MeetingEvent] {
+        struct PrimaryKey: Hashable {
+            let uid: String
+            let startMinute: Int
+        }
+        struct FallbackKey: Hashable {
+            let title: String
+            let startMinute: Int
+            let endMinute: Int
+        }
+
+        func minuteEpoch(_ date: Date) -> Int {
+            Int((date.timeIntervalSince1970 / 60).rounded())
+        }
+        func normalizedUID(_ raw: String?) -> String? {
+            guard let raw else { return nil }
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        func normalizedTitle(_ raw: String) -> String? {
+            let folded = raw
+                .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if folded.isEmpty || folded == "(untitled)" { return nil }
+            return folded
+        }
+
+        var winners: [MeetingEvent] = []
+        var primaryIndex: [PrimaryKey: Int] = [:]
+        var fallbackIndex: [FallbackKey: Int] = [:]
+
+        func findCrossSourceMatch(for event: MeetingEvent) -> Int? {
+            let startMin = minuteEpoch(event.startDate)
+            if let uid = normalizedUID(event.iCalUID),
+               let idx = primaryIndex[PrimaryKey(uid: uid, startMinute: startMin)],
+               winners[idx].source != event.source {
+                return idx
+            }
+            if let title = normalizedTitle(event.title),
+               let idx = fallbackIndex[FallbackKey(title: title, startMinute: startMin, endMinute: minuteEpoch(event.endDate))],
+               winners[idx].source != event.source {
+                return idx
+            }
+            return nil
+        }
+
+        func appendWinner(_ event: MeetingEvent) {
+            let idx = winners.count
+            winners.append(event)
+            let startMin = minuteEpoch(event.startDate)
+            if let uid = normalizedUID(event.iCalUID) {
+                let pKey = PrimaryKey(uid: uid, startMinute: startMin)
+                if primaryIndex[pKey] == nil { primaryIndex[pKey] = idx }
+            }
+            if let title = normalizedTitle(event.title) {
+                let fKey = FallbackKey(title: title, startMinute: startMin, endMinute: minuteEpoch(event.endDate))
+                if fallbackIndex[fKey] == nil { fallbackIndex[fKey] = idx }
+            }
+        }
+
+        for event in google {
+            appendWinner(event)
+        }
+        for event in graph {
+            if findCrossSourceMatch(for: event) != nil { continue }
+            appendWinner(event)
+        }
+        for event in eventKit {
+            if let matchIdx = findCrossSourceMatch(for: event) {
+                if winners[matchIdx].matchedEventKitIdentifier == nil {
+                    winners[matchIdx].matchedEventKitIdentifier = event.eventKitIdentifier
+                }
+                continue
+            }
+            appendWinner(event)
+        }
+        return winners
     }
 
     /// Splits the merged-and-sorted list into upcoming (endDate > now) and
