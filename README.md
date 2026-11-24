@@ -100,7 +100,7 @@ Official builds come only from the [Mac App Store](https://apps.apple.com/app/id
 
 I built Slapss to fix a problem I kept running into myself, and shared it so it can
 help others too. If it saved you a meeting or two, you can
-[buy me a coffee on GitHub Sponsors](https://github.com/sponsors/theshiver). Thank you!
+[buy me a coffee](https://buymeacoffee.com/cancetin). Thank you!
 
 Made by [Can Çetin](https://cancetin.com/).
 
