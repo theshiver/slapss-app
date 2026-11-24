@@ -1,106 +1,94 @@
 <div align="center">
 
-<img src="docs/app-icon.png" width="112" alt="Slapss app icon">
+<img src="docs/app-icon.png" width="84" alt="Slapss app icon">
 
 # Slapss
 
-**Meetings you can't miss.**
+### Never miss a meeting on Mac.
 
-A free, open-source full-screen meeting reminder for Mac.
+A free, open-source full-screen meeting reminder for Mac. Quiet notification banners vanish during deep focus. Slapss takes over every display when a meeting starts, with one-click Join for Zoom, Teams, and Google Meet.
 
-### [Download on the Mac App Store](https://apps.apple.com/app/id6767488326)
+**[Download Free on Mac App Store](https://apps.apple.com/app/id6767488326)** · [Try Live Preview](https://slapss-app.com) · [☕ Buy me a coffee](https://buymeacoffee.com/cancetin) · [Changelog](CHANGELOG.md) · [Support](https://slapss-app.com/support)
 
-Or with Homebrew: `brew install --cask theshiver/tap/slapss`
+<sub>★ 4.9 on Mac App Store · Free forever, no limits · Apache 2.0 · Zero tracking · macOS 15+</sub>
 
-[slapss-app.com](https://slapss-app.com) · [Changelog](CHANGELOG.md) · [Support](https://slapss-app.com/support)
+<br>
 
-<img src="docs/demo.gif" width="720" alt="Slapss demo: the next meeting in the menu bar, then a full-screen alert with Join, Snooze and Dismiss">
+<img src="docs/demo.gif" width="740" alt="Slapss demo: the next meeting in the menu bar, then a full-screen alert with Join, Snooze and Dismiss">
 
 </div>
 
----
+### Install
 
-Notifications are built to be ignored. A small banner, a soft chime, gone in three
-seconds. By the time you look up, you are already late.
+```bash
+brew install --cask theshiver/tap/slapss
+```
 
-Slapss does the opposite. It sits in your menu bar, watches your calendar, and when
-a meeting starts it covers your screen with the one thing you need to see and a
-button to join.
+Or install directly from the [Mac App Store](https://apps.apple.com/app/id6767488326).
 
-*Free forever. No subscription, no in-app purchase, no account, no tracking.*
+## Why Slapss
 
-## What you get
+| Built-in macOS Banners | Paid & Capped Apps | Slapss |
+|---|---|---|
+| Quiet corner pop-up vanishes in seconds, easy to miss on wide or multi-display setups. | Daily alert caps, single-calendar free tiers, or subscriptions for snooze and multi-display alerts. | **Every meeting on every display**, one-click Join, and direct Google & Microsoft 365 sign-in. **Free and open source forever.** |
 
-- **A full-screen alert you can't scroll past.** On one display or all of them, at
-  the start of the meeting or up to 15 minutes before.
-- **One click to join.** Zoom, Microsoft Teams, Google Meet, Webex, Whereby, Around
-  and Yandex Telemost links open straight from the alert, even when your company's
-  email security has wrapped them.
-- **Your day in the menu bar.** The next meeting and a live countdown, with today's
-  agenda one click away.
-- **Snooze that comes back.** 1, 5, 10, 15 or 30 minutes, an hour, or until the
-  meeting ends. Press Escape to dismiss.
-- **Less noise.** Skip the alert for meetings like "Lunch" or "PTO", or for ones you
-  haven't accepted. Presenting Now holds alerts while you share your screen.
-- **Reminders too.** Full-screen alerts for macOS Reminders, with one-click completion.
-- **Make it yours.** Three themes (Sunset, Ocean, Forest), an optional alert sound,
-  and eight languages: English, Turkish, Spanish, German, Italian, French, Japanese,
-  Ukrainian.
-- **Accessible.** VoiceOver labels, a keyboard-operable alert, and Reduce Motion and
-  Reduce Transparency support.
+See the [full side-by-side comparison](https://slapss-app.com/meeting-reminder-apps-mac-compared).
+
+## Built for back-to-back calendars
+
+| | |
+|---|---|
+| **Direct Calendar Sync & Deduplication**<br>Use Apple Calendar (iCloud, Google, Outlook, Exchange) or sign in directly to **Google Calendar** (`authuser` Meet routing) and **Microsoft 365** with read-only OAuth. Automatic cross-source deduplication prevents double alerts. ([Outlook](https://slapss-app.com/outlook-meeting-reminder-mac) · [Google Calendar](https://slapss-app.com/google-calendar-reminder-mac)) | **One-Click Join (7 Platforms)**<br>Detects links for **Zoom, Microsoft Teams, Google Meet, Webex, Whereby, Around, and Yandex Telemost**. Unwraps Microsoft Safe Links, Proofpoint, and Barracuda locally on your Mac. ([Teams](https://slapss-app.com/teams-meeting-reminder-mac) · [Zoom](https://slapss-app.com/zoom-meeting-reminder-mac)) |
+| **Presenting Now & Smart Filters**<br>Pause full-screen alerts while sharing your screen. Filter to accepted meetings only, or skip titles by keyword like `"Lunch"` or `"PTO"`. | **macOS Reminders Overlay**<br>Give time-sensitive Apple Reminders the same unmissable full-screen alert, with one-tap completion straight from the card. |
+| **Flexible Timing, Themes & 8 Languages**<br>Alert at start, 10s–30s early, or 1–15m ahead. Snooze from 1m to 1h or until end. Sunset, Ocean, and Forest themes, plus **English, Turkish, Spanish, German, Italian, French, Japanese, and Ukrainian**. ([Hyperfocus & ADHD](https://slapss-app.com/adhd-meeting-reminder)) | **Native & Accessible**<br>Built with SwiftUI and AppKit for macOS 15+. Press `Return` to join or `Esc` to dismiss, with VoiceOver labels and Reduce Motion / Reduce Transparency support. |
 
 <p align="center">
   <img src="https://slapss-app.com/menubar.jpg" width="49%" alt="The Slapss menu bar agenda showing the day's meetings">
   <img src="https://slapss-app.com/calendars.jpg" width="49%" alt="Slapss setup: language, theme and calendar access">
 </p>
 
-## Works with your calendar
+## Private by architecture, verifiable in code
 
-Anything in macOS Calendar: **iCloud, Google Calendar, Outlook and Exchange**.
-Don't use Apple Calendar? Sign in directly to **Google Calendar** or **Microsoft 365**
-inside Slapss, no Calendar.app setup needed. If an account is connected in both places,
-Slapss deduplicates events automatically so you never get double alerts. Guides for
-[Outlook](https://slapss-app.com/outlook-meeting-reminder-mac)
-and [Google Calendar](https://slapss-app.com/google-calendar-reminder-mac).
+There is no Slapss server, no analytics, no crash reporting, no accounts, and no third-party dependencies. Local calendars stay on your Mac; optional Google Calendar and Microsoft 365 sign-ins use read-only OAuth with tokens stored in your macOS Keychain.
 
-## Who it's for
+Inspect the installed app's sandbox entitlements yourself:
 
-People who miss meetings because a notification banner never reaches them:
-back-to-back meetings, several monitors, long screen-sharing sessions, or deep
-focus and [hyperfocus](https://slapss-app.com/adhd-meeting-reminder). If calendar
-notifications keep slipping past you, Slapss is the one you can't scroll past.
+```bash
+codesign -d --entitlements :- /Applications/slapss.app
+```
 
-## Private by design
+Read the full breakdown in [DEVELOPMENT.md](DEVELOPMENT.md#privacy-details) and the [Privacy policy](https://slapss-app.com/privacy).
 
-There is no Slapss server. Your calendar is read on your Mac and sent nowhere. No
-analytics, no crash reporting, no accounts. Direct Google Calendar and Microsoft 365
-events come straight from Google and Microsoft with read-only permissions, and the
-sign-in tokens stay in your keychain.
+## Questions & contributing
 
-You don't have to take that on faith: the code is right here.
-[DEVELOPMENT.md](DEVELOPMENT.md#privacy-details) shows exactly what the app touches
-and how to check the copy you installed.
+<details>
+<summary>Which calendars work?</summary>
 
-## Open source
+Any calendar in the macOS Calendar app (iCloud, Google, Outlook, Exchange), plus direct read-only sign-in inside Slapss for both Google Calendar and Microsoft 365 without needing Calendar.app. Automatic deduplication prevents duplicate meetings and double alerts if the same account is connected in both places.
 
-Slapss is open source under the [Apache License 2.0](LICENSE), with no third-party
-dependencies. Want to read how it works, build it yourself, or help out? Start with
-[DEVELOPMENT.md](DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md). Found a
-security issue? See [SECURITY.md](SECURITY.md).
+</details>
 
-Requires macOS 15 or later.
+<details>
+<summary>How is Slapss different from MeetingBar?</summary>
+
+Both are free and open source under Apache 2.0. MeetingBar is a menu bar calendar with full-screen alerts as an option. Slapss is built around the full-screen alert: every meeting, every display, with direct Google Calendar and Microsoft 365 sign-in, automatic deduplication, and Presenting Now. See the [full comparison](https://slapss-app.com/meeting-reminder-apps-mac-compared).
+
+</details>
+
+<details>
+<summary>How do I build from source or contribute?</summary>
+
+Requires macOS 15 or later and zero third-party dependencies. Start with [DEVELOPMENT.md](DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md). Found a security issue? See [SECURITY.md](SECURITY.md). Licensed under the [Apache License 2.0](LICENSE).
+
+</details>
 
 ---
 
-<sub>The Slapss name, app icon, menu bar mark, and logo are trademarks and not covered
-by the code license; a fork needs its own name and icon, see [TRADEMARK.md](TRADEMARK.md).
-Official builds come only from the [Mac App Store](https://apps.apple.com/app/id6767488326) and the `theshiver/tap` Homebrew cask.</sub>
+<sub>The Slapss name, app icon, menu bar mark, and logo are trademarks and not covered by the code license; a fork needs its own name and icon, see [TRADEMARK.md](TRADEMARK.md). Official builds come only from the [Mac App Store](https://apps.apple.com/app/id6767488326) and the `theshiver/tap` Homebrew cask.</sub>
 
 <div align="center">
 
-I built Slapss to fix a problem I kept running into myself, and shared it so it can
-help others too. If it saved you a meeting or two, you can
-[buy me a coffee](https://buymeacoffee.com/cancetin). Thank you!
+[Outlook](https://slapss-app.com/outlook-meeting-reminder-mac) · [Google Calendar](https://slapss-app.com/google-calendar-reminder-mac) · [Teams](https://slapss-app.com/teams-meeting-reminder-mac) · [Zoom](https://slapss-app.com/zoom-meeting-reminder-mac) · [ADHD](https://slapss-app.com/adhd-meeting-reminder) · [Compare](https://slapss-app.com/meeting-reminder-apps-mac-compared) · [☕ Buy me a coffee](https://buymeacoffee.com/cancetin)
 
 Made by [Can Çetin](https://cancetin.com/).
 
